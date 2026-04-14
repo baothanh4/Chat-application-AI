@@ -1,0 +1,2560 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Application - Đăng nhập & Đăng ký</title>
+    <meta name="description" content="Đăng nhập hoặc đăng ký tài khoản Chat Application với bảo mật khuôn mặt." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.85);
+            --bg-glass: rgba(255, 255, 255, 0.04);
+            --bg-glass-hover: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(99, 102, 241, 0.5);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #6366f1;
+            --accent-primary-glow: rgba(99, 102, 241, 0.25);
+            --accent-secondary: #8b5cf6;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.12);
+            --warning: #f59e0b;
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-2xl: 24px;
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ====== ANIMATED BACKGROUND ====== */
+        .bg-effects {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-effects .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+
+        .bg-effects .orb:nth-child(1) {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(99,102,241,0.3), transparent 70%);
+            top: -10%; left: -5%;
+            animation-delay: 0s;
+        }
+        .bg-effects .orb:nth-child(2) {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%);
+            bottom: -10%; right: -5%;
+            animation-delay: -7s;
+        }
+        .bg-effects .orb:nth-child(3) {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(167,139,250,0.2), transparent 70%);
+            top: 40%; left: 50%;
+            animation-delay: -14s;
+        }
+
+        .bg-effects .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -40px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(40px, 30px) scale(1.05); }
+        }
+
+        /* ====== LAYOUT ====== */
+        .page-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .auth-shell {
+            width: min(1120px, 100%);
+            display: grid;
+            grid-template-columns: 1fr 1.05fr;
+            gap: 0;
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            border: 1px solid var(--border-glass);
+            animation: shellAppear 0.8s ease-out;
+        }
+
+        @keyframes shellAppear {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ====== LEFT HERO PANEL ====== */
+        .hero-panel {
+            background: var(--accent-gradient);
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0v60M0 30h60' stroke='rgba(255,255,255,0.06)' stroke-width='1'/%3E%3C/svg%3E");
+            background-size: 60px 60px;
+        }
+
+        .hero-panel::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -30%;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            filter: blur(60px);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-logo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+
+        .hero-logo-icon {
+            width: 52px; height: 52px;
+            background: rgba(255,255,255,0.18);
+            border-radius: var(--radius-lg);
+            display: grid;
+            place-items: center;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .hero-logo-text {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: white;
+        }
+
+        .hero-title {
+            font-size: 40px;
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .hero-title span {
+            display: block;
+            background: linear-gradient(90deg, rgba(255,255,255,1), rgba(255,255,255,0.7));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-desc {
+            color: rgba(255,255,255,0.85);
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 28px;
+            max-width: 400px;
+        }
+
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(8px);
+            font-size: 14px;
+            color: rgba(255,255,255,0.95);
+            transition: var(--transition-fast);
+        }
+
+        .feature-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(4px);
+        }
+
+        .feature-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            display: grid;
+            place-items: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* ====== CURRENT USER CARD (in hero) ====== */
+        .current-user-card {
+            display: none;
+            margin-top: 28px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .current-user-card.visible { display: block; }
+
+        .current-user-card h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 12px;
+        }
+
+        .current-user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .current-user-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .current-user-row strong {
+            color: white;
+            font-weight: 600;
+        }
+
+        .current-user-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .btn-hero-action {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            font-family: inherit;
+            transition: var(--transition-fast);
+        }
+
+        .btn-hero-action:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* ====== RIGHT AUTH PANEL ====== */
+        .auth-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            padding: 40px 36px;
+            display: flex;
+            flex-direction: column;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .auth-panel::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .auth-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .auth-panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        /* ====== TAB SWITCHER ====== */
+        .tab-switcher {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 28px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            font-family: inherit;
+            transition: var(--transition-fast);
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 12px var(--accent-primary-glow);
+        }
+
+        /* ====== PANELS ====== */
+        .auth-form-panel {
+            display: none;
+            animation: panelFadeIn 0.4s ease-out;
+        }
+
+        .auth-form-panel.active { display: block; }
+
+        @keyframes panelFadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ====== FORM ELEMENTS ====== */
+        .form-section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-glass);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: 0.01em;
+        }
+
+        .form-group label .required {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: var(--text-muted);
+            pointer-events: none;
+            transition: var(--transition-fast);
+        }
+
+        .input-wrapper input:focus ~ .input-icon {
+            color: var(--accent-primary);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: var(--transition-fast);
+        }
+
+        .input-wrapper input {
+            padding-left: 40px;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:hover, textarea:hover {
+            border-color: rgba(255,255,255,0.12);
+            background: var(--bg-glass-hover);
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 4px var(--accent-primary-glow);
+            background: var(--bg-glass-hover);
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* ====== BUTTONS ====== */
+        .btn-primary {
+            width: 100%;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px 20px;
+            background: var(--accent-gradient);
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+            opacity: 0;
+            transition: var(--transition-fast);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px var(--accent-primary-glow);
+        }
+
+        .btn-primary:hover::before { opacity: 1; }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--border-glass);
+            background: var(--bg-glass);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            font-family: inherit;
+            transition: var(--transition-fast);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-glass-hover);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .btn-face-scan {
+            width: 100%;
+            border: 1px dashed rgba(99,102,241,0.4);
+            background: rgba(99,102,241,0.06);
+            color: var(--accent-primary);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 15px;
+            font-family: inherit;
+            transition: var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-face-scan:hover {
+            background: rgba(99,102,241,0.12);
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.15);
+        }
+
+        /* ====== MESSAGES ====== */
+        .msg {
+            min-height: 20px;
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+        }
+
+        .msg:not(:empty) {
+            padding: 10px 14px;
+        }
+
+        .msg.error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+
+        .msg.success {
+            color: var(--success);
+            background: var(--success-bg);
+            border: 1px solid rgba(16,185,129,0.2);
+        }
+
+        /* ====== CAMERA / FACE SCAN ====== */
+        .face-scan-section {
+            margin-top: 8px;
+        }
+
+        .camera-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            align-items: start;
+        }
+
+        .camera-container, .preview-container {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-container video {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #0f172a;
+            border-radius: var(--radius-md);
+            object-fit: cover;
+            display: block;
+        }
+
+        .preview-container img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #0f172a;
+            border-radius: var(--radius-md);
+            object-fit: cover;
+            display: block;
+        }
+
+        .camera-btns {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .camera-btns .btn-secondary {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .camera-hint {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ====== FACE OVERLAY EFFECT ====== */
+        .face-overlay {
+            position: absolute;
+            inset: 12px;
+            border-radius: var(--radius-md);
+            pointer-events: none;
+            display: none;
+        }
+
+        .face-overlay.active {
+            display: block;
+        }
+
+        .face-overlay .scan-line {
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+            box-shadow: 0 0 12px var(--accent-primary);
+            animation: scanMove 2.5s ease-in-out infinite;
+        }
+
+        .face-overlay .face-frame {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%; height: 70%;
+            border: 2px solid rgba(99,102,241,0.4);
+            border-radius: 50%;
+            animation: framePulse 2s ease-in-out infinite;
+        }
+
+        .face-overlay .corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: var(--accent-primary);
+            border-style: solid;
+        }
+
+        .face-overlay .corner.tl { top: 8%; left: 8%; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+        .face-overlay .corner.tr { top: 8%; right: 8%; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+        .face-overlay .corner.bl { bottom: 8%; left: 8%; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+        .face-overlay .corner.br { bottom: 8%; right: 8%; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+
+        @keyframes scanMove {
+            0%, 100% { top: 15%; }
+            50% { top: 75%; }
+        }
+
+        @keyframes framePulse {
+            0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.02); }
+        }
+
+        /* ====== AVATAR UPLOAD ====== */
+        .avatar-upload-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .avatar-placeholder {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: var(--bg-glass);
+            border: 2px dashed var(--border-glass);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            color: var(--text-muted);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .avatar-placeholder img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-upload-controls {
+            flex: 1;
+        }
+
+        /* ====== DIVIDER ====== */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-glass);
+        }
+
+        /* ====== FOOTER INFO ====== */
+        .auth-footer {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        .auth-footer .tip {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .auth-footer code {
+            background: rgba(99,102,241,0.12);
+            color: var(--accent-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* ====== FRIEND HUB ====== */
+        .friend-hub {
+            display: none;
+            margin-top: 24px;
+            padding: 18px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            background: var(--bg-glass);
+        }
+
+        .friend-hub.visible {
+            display: block;
+        }
+
+        .friend-hub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .friend-hub-header h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .friend-hub-header p {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .friend-search-results,
+        .friend-incoming-list,
+        .friend-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .friend-card {
+            border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .friend-card-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .friend-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+
+        .friend-meta {
+            min-width: 0;
+        }
+
+        .friend-meta strong {
+            display: block;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .friend-meta span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .friend-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .friend-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(99,102,241,0.12);
+            color: var(--accent-primary);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .friend-tag.muted {
+            background: rgba(148,163,184,0.12);
+            color: var(--text-secondary);
+        }
+
+        .friend-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .friend-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .friend-column {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .friend-column h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .friend-empty {
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 10px 0;
+        }
+
+        /* ====== STATUS BADGE ====== */
+        .scan-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .scan-status.ready {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .scan-status.waiting {
+            background: rgba(245,158,11,0.12);
+            color: var(--warning);
+        }
+
+        .scan-status .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .scan-status.ready .dot {
+            animation: dotPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ====== PASSWORD STRENGTH ====== */
+        .password-strength {
+            height: 3px;
+            border-radius: 3px;
+            background: var(--bg-glass);
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s, background 0.3s;
+            width: 0%;
+        }
+
+        .face-login-challenge {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid rgba(239, 68, 68, 0.22);
+            border-radius: var(--radius-lg);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .face-login-challenge.visible {
+            display: block;
+        }
+
+        .face-login-challenge h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .face-login-candidates {
+            display: grid;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .face-login-candidate {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .face-login-candidate-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .face-login-candidate-meta strong {
+            display: block;
+            font-size: 14px;
+        }
+
+        .face-login-candidate-meta span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .face-login-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message-inbox {
+            display: none;
+            margin-top: 24px;
+            padding: 18px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            background: var(--bg-glass);
+        }
+
+        .message-inbox.visible {
+            display: block;
+        }
+
+        .message-inbox-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .message-inbox-header h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .message-inbox-header p {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .message-inbox-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .message-inbox-item {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .message-inbox-item.active {
+            border-color: rgba(99,102,241,0.35);
+            box-shadow: 0 0 0 1px rgba(99,102,241,0.12) inset;
+        }
+
+        .message-inbox-item-main {
+            min-width: 0;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .message-inbox-meta {
+            min-width: 0;
+        }
+
+        .message-inbox-meta strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .message-inbox-meta span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .message-inbox-preview {
+            margin-top: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .message-inbox-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .message-inbox-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .message-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 7px;
+            border-radius: 999px;
+            background: var(--accent-gradient);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .message-inbox-empty {
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 8px 0;
+        }
+
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 900px) {
+            .auth-shell {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+            }
+            .hero-panel {
+                padding: 30px 24px;
+            }
+            .hero-title { font-size: 28px; }
+            .auth-panel { padding: 28px 20px; }
+            .camera-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ====== LOADING SPINNER ====== */
+        .btn-primary.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn-primary.loading::after {
+            content: '';
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* File input custom */
+        input[type="file"] {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        input[type="file"]::file-selector-button {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            margin-right: 10px;
+            transition: var(--transition-fast);
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: var(--bg-glass-hover);
+        }
+
+        /* gender select */
+        select {
+            appearance: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Background Effects -->
+<div class="bg-effects">
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <div class="grid-overlay"></div>
+</div>
+
+<div class="page-container">
+    <div class="auth-shell">
+
+        <!-- LEFT: Hero Panel -->
+        <section class="hero-panel">
+            <div class="hero-content">
+                <div class="hero-logo">
+                    <div class="hero-logo-icon">💬</div>
+                    <div class="hero-logo-text">Chat App</div>
+                </div>
+
+                <h1 class="hero-title">
+                    <span>Kết nối mọi lúc,</span>
+                    <span>mọi nơi.</span>
+                </h1>
+
+                <p class="hero-desc">
+                    Đăng nhập hoặc đăng ký tài khoản Chat Application.
+                    Bảo mật 2 lớp với mật khẩu và nhận diện khuôn mặt.
+                </p>
+
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-icon">🔒</div>
+                        <span>Bảo mật mật khẩu được mã hoá BCrypt</span>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">📸</div>
+                        <span>Đăng nhập bằng quét khuôn mặt</span>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <span>Chat realtime qua WebSocket</span>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">🟢</div>
+                        <span>Trạng thái online qua Redis Presence</span>
+                    </li>
+                </ul>
+
+                <!-- Current User Card -->
+                <div class="current-user-card" id="currentUserBox">
+                    <h3>👤 Người dùng hiện tại</h3>
+                    <div class="current-user-info">
+                        <div class="current-user-row">
+                            <span>Username</span>
+                            <strong id="profileUsername"></strong>
+                        </div>
+                        <div class="current-user-row">
+                            <span>Display Name</span>
+                            <strong id="profileDisplayName"></strong>
+                        </div>
+                        <div class="current-user-row">
+                            <span>User ID</span>
+                            <strong id="profileId" style="font-size: 11px; word-break: break-all;"></strong>
+                        </div>
+                    </div>
+                    <div class="current-user-actions">
+                        <button class="btn-hero-action" id="copyUserIdBtn" type="button">📋 Copy ID</button>
+                        <button class="btn-hero-action" id="logoutBtn" type="button">🚪 Đăng xuất</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT: Auth Panel -->
+        <section class="auth-panel">
+
+            <!-- Tab Switcher -->
+            <div class="tab-switcher">
+                <button class="tab-btn active" id="registerTab" type="button">📝 Đăng ký</button>
+                <button class="tab-btn" id="loginTab" type="button">🔑 Đăng nhập</button>
+            </div>
+
+            <!-- ============ REGISTER PANEL ============ -->
+            <div class="auth-form-panel active" id="registerPanel">
+                <form id="registerForm" autocomplete="off">
+
+                    <!-- Account Info -->
+                    <div class="form-section-title">Thông tin tài khoản</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Username <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input id="regUsername" type="text" placeholder="vd: nguyenvana" required />
+                                <span class="input-icon">👤</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Tên hiển thị <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input id="regDisplayName" type="text" placeholder="vd: Nguyễn Văn A" required />
+                                <span class="input-icon">✏️</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Info -->
+                    <div class="form-section-title">Thông tin cá nhân</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Họ và tên đầy đủ</label>
+                            <input id="regFullName" type="text" placeholder="Họ và tên" />
+                        </div>
+                        <div class="form-group">
+                            <label>Số điện thoại</label>
+                            <input id="regPhoneNumber" type="text" placeholder="09xx xxx xxx" />
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input id="regEmail" type="email" placeholder="email@gmail.com" />
+                        </div>
+                        <div class="form-group">
+                            <label>Ngày sinh</label>
+                            <input id="regDateOfBirth" type="date" />
+                        </div>
+                        <div class="form-group">
+                            <label>Giới tính</label>
+                            <select id="regGender">
+                                <option value="">-- Chọn --</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Địa chỉ</label>
+                            <input id="regAddress" type="text" placeholder="Thành phố / Quận" />
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Giới thiệu</label>
+                            <textarea id="regBio" placeholder="Viết vài dòng về bạn..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Avatar -->
+                    <div class="form-section-title">Ảnh đại diện</div>
+                    <div class="form-group">
+                        <div class="avatar-upload-area">
+                            <div class="avatar-placeholder" id="avatarPreviewCircle">📷</div>
+                            <div class="avatar-upload-controls">
+                                <input id="regAvatarFile" type="file" accept="image/*" />
+                                <input id="regAvatarPath" type="hidden" />
+                                <button class="btn-secondary" id="uploadAvatarBtn" type="button" style="margin-top: 8px;">⬆️ Upload ảnh</button>
+                                <div class="msg" id="avatarUploadMessage"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Face Scan Enrollment -->
+                    <div class="form-section-title">🔐 Quét khuôn mặt (bắt buộc)</div>
+                    <div class="face-scan-section">
+                        <div class="camera-grid">
+                            <div class="camera-container">
+                                <video id="regFaceVideo" autoplay playsinline muted></video>
+                                <canvas id="regFaceCanvas" style="display:none;"></canvas>
+                                <div class="face-overlay" id="regFaceOverlay">
+                                    <div class="scan-line"></div>
+                                    <div class="face-frame"></div>
+                                    <div class="corner tl"></div>
+                                    <div class="corner tr"></div>
+                                    <div class="corner bl"></div>
+                                    <div class="corner br"></div>
+                                </div>
+                                <div class="camera-btns">
+                                    <button class="btn-secondary" id="startRegCameraBtn" type="button">📹 Bật camera</button>
+                                    <button class="btn-secondary" id="captureRegFaceBtn" type="button">📸 Chụp mặt</button>
+                                </div>
+                                <div class="camera-hint">Đặt khuôn mặt chính diện, đủ sáng, nằm giữa khung hình.</div>
+                            </div>
+                            <div class="preview-container">
+                                <img id="regFacePreview" alt="Preview khuôn mặt đăng ký" />
+                                <div class="camera-hint">Ảnh khuôn mặt đã chụp sẽ dùng để đăng nhập bằng face scan.</div>
+                                <div id="regFaceStatus"></div>
+                                <div class="msg" id="regFaceMessage"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-section-title">Mật khẩu</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input id="regPassword" type="password" minlength="6" placeholder="Ít nhất 6 ký tự" required />
+                                <span class="input-icon">🔒</span>
+                            </div>
+                            <div class="password-strength">
+                                <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Xác nhận mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input id="regConfirmPassword" type="password" minlength="6" placeholder="Nhập lại mật khẩu" required />
+                                <span class="input-icon">🔒</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" type="submit" id="registerBtn">🚀 Tạo tài khoản</button>
+                    <div class="msg" id="registerMessage"></div>
+                </form>
+            </div>
+
+            <!-- ============ LOGIN PANEL ============ -->
+            <div class="auth-form-panel" id="loginPanel">
+                <form id="loginForm" autocomplete="off">
+                    <div class="form-section-title">Đăng nhập bằng mật khẩu</div>
+                    <div class="form-group">
+                        <label>Username <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <input id="loginUsername" type="text" placeholder="Nhập username" required />
+                            <span class="input-icon">👤</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <input id="loginPassword" type="password" minlength="6" placeholder="Nhập mật khẩu" required />
+                            <span class="input-icon">🔒</span>
+                        </div>
+                    </div>
+                    <button class="btn-primary" type="submit" id="loginBtn">🔑 Đăng nhập</button>
+                    <div class="msg" id="loginMessage"></div>
+                </form>
+
+                <div class="divider">hoặc</div>
+
+                <!-- Face Login Section -->
+                <form id="faceLoginForm" autocomplete="off">
+                    <div class="form-section-title">📸 Đăng nhập bằng khuôn mặt</div>
+                    <div class="face-scan-section">
+                        <div class="camera-grid">
+                            <div class="camera-container">
+                                <video id="loginFaceVideo" autoplay playsinline muted></video>
+                                <canvas id="loginFaceCanvas" style="display:none;"></canvas>
+                                <div class="face-overlay" id="loginFaceOverlay">
+                                    <div class="scan-line"></div>
+                                    <div class="face-frame"></div>
+                                    <div class="corner tl"></div>
+                                    <div class="corner tr"></div>
+                                    <div class="corner bl"></div>
+                                    <div class="corner br"></div>
+                                </div>
+                                <div class="camera-btns">
+                                    <button class="btn-secondary" id="startLoginCameraBtn" type="button">📹 Bật camera & tự quét</button>
+                                    <button class="btn-secondary" id="captureLoginFaceBtn" type="button">🔁 Quét ngay</button>
+                                </div>
+                                <div class="camera-hint">Chỉ cần đưa mặt vào camera, hệ thống sẽ tự quét và tự đăng nhập.</div>
+                            </div>
+                            <div class="preview-container">
+                                <img id="loginFacePreview" alt="Preview khuôn mặt đăng nhập" />
+                                                <div class="camera-hint">Khi nhận diện đúng, hệ thống sẽ tự đăng nhập ngay.</div>
+                                <div id="loginFaceStatus"></div>
+                                <div class="msg" id="loginFaceMessage"></div>
+                                <div class="face-login-challenge" id="faceLoginChallenge">
+                                    <h4>Chọn đúng tài khoản nếu hệ thống thấy nhiều khuôn mặt gần giống nhau</h4>
+                                    <div class="face-login-candidates" id="faceLoginCandidates"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-face-scan" type="submit" id="faceLoginBtn">📸 Đăng nhập bằng khuôn mặt</button>
+                </form>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="auth-footer">
+                <p class="tip">
+                    Sau khi đăng nhập, user sẽ được lưu trong <code>localStorage</code>.
+                    Dùng <code>userId</code> cho API chat, presence và WebSocket.
+                </p>
+            </div>
+
+            <div class="friend-hub" id="friendHub">
+                <div class="friend-hub-header">
+                    <div>
+                        <h3>👥 Tìm bạn bè</h3>
+                        <p>Gõ display name để hiện gợi ý ngay, rồi gửi lời mời kết bạn.</p>
+                    </div>
+                    <button class="btn-secondary" id="refreshFriendHubBtn" type="button">🔄 Làm mới</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Tìm theo tên hiển thị / username</label>
+                    <div class="input-wrapper">
+                        <input id="friendSearchInput" type="text" placeholder="Ví dụ: baothanh, anhhoang..." autocomplete="off" />
+                        <span class="input-icon">🔎</span>
+                    </div>
+                </div>
+
+                <div class="msg" id="friendSearchMessage"></div>
+                <div class="friend-search-results" id="friendSearchResults"></div>
+
+                <div class="friend-columns">
+                    <div class="friend-column">
+                        <h4>📩 Lời mời đến</h4>
+                        <div class="friend-incoming-list" id="incomingRequestsList"></div>
+                    </div>
+                    <div class="friend-column">
+                        <h4>⭐ Bạn bè</h4>
+                        <div class="friend-list" id="friendsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="message-inbox" id="messageInbox">
+                <div class="message-inbox-header">
+                    <div>
+                        <h3>💬 Hộp thư tin nhắn</h3>
+                        <p>Hiện số tin chưa đọc và tin nhắn cuối từ từng cuộc hội thoại.</p>
+                    </div>
+                    <button class="btn-secondary" id="refreshInboxBtn" type="button">🔄 Làm mới</button>
+                </div>
+                <div class="message-inbox-list" id="messageInboxList"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    /* ====== DOM REFERENCES ====== */
+    const $ = id => document.getElementById(id);
+
+    const registerTab = $('registerTab');
+    const loginTab = $('loginTab');
+    const registerPanel = $('registerPanel');
+    const loginPanel = $('loginPanel');
+
+    const currentUserBox = $('currentUserBox');
+    const profileUsername = $('profileUsername');
+    const profileDisplayName = $('profileDisplayName');
+    const profileId = $('profileId');
+    const copyUserIdBtn = $('copyUserIdBtn');
+    const logoutBtn = $('logoutBtn');
+    const friendHub = $('friendHub');
+    const friendSearchInput = $('friendSearchInput');
+    const friendSearchResults = $('friendSearchResults');
+    const friendSearchMessage = $('friendSearchMessage');
+    const incomingRequestsList = $('incomingRequestsList');
+    const friendsList = $('friendsList');
+    const refreshFriendHubBtn = $('refreshFriendHubBtn');
+    const messageInbox = $('messageInbox');
+    const messageInboxList = $('messageInboxList');
+    const refreshInboxBtn = $('refreshInboxBtn');
+
+    const regFaceVideo = $('regFaceVideo');
+    const regFaceCanvas = $('regFaceCanvas');
+    const regFacePreview = $('regFacePreview');
+    const startRegCameraBtn = $('startRegCameraBtn');
+    const captureRegFaceBtn = $('captureRegFaceBtn');
+    const regFaceMessage = $('regFaceMessage');
+    const regFaceOverlay = $('regFaceOverlay');
+    const regFaceStatus = $('regFaceStatus');
+
+    const loginFaceVideo = $('loginFaceVideo');
+    const loginFaceCanvas = $('loginFaceCanvas');
+    const loginFacePreview = $('loginFacePreview');
+    const startLoginCameraBtn = $('startLoginCameraBtn');
+    const captureLoginFaceBtn = $('captureLoginFaceBtn');
+    const loginFaceMessage = $('loginFaceMessage');
+    const loginFaceOverlay = $('loginFaceOverlay');
+    const loginFaceStatus = $('loginFaceStatus');
+    const faceLoginChallenge = $('faceLoginChallenge');
+    const faceLoginCandidates = $('faceLoginCandidates');
+
+    let registrationStream = null;
+    let loginStream = null;
+    let registrationFaceBlob = null;
+    let loginFaceBlob = null;
+    let loginScanTimer = null;
+    let loginScanInFlight = false;
+    let loginScanActive = false;
+    let loginScanFailures = 0;
+    let loginScanCooldownUntil = 0;
+    let faceDetector = null;
+    const faceDetectorSupported = 'FaceDetector' in window;
+    let friendSearchTimer = null;
+    let friendSearchItems = [];
+    let faceLoginPendingBlob = null;
+    let inboxItems = [];
+    let inboxPollTimer = null;
+
+    /* ====== TAB SWITCHING ====== */
+    function showTab(tabName) {
+        const isRegister = tabName === 'register';
+        registerTab.classList.toggle('active', isRegister);
+        loginTab.classList.toggle('active', !isRegister);
+        registerPanel.classList.toggle('active', isRegister);
+        loginPanel.classList.toggle('active', !isRegister);
+
+        // Re-trigger animation
+        const activePanel = isRegister ? registerPanel : loginPanel;
+        activePanel.style.animation = 'none';
+        activePanel.offsetHeight; // reflow
+        activePanel.style.animation = '';
+
+        stopStream(registrationStream);
+        registrationStream = null;
+        regFaceOverlay.classList.remove('active');
+
+        if (isRegister) {
+            stopAutoFaceLogin();
+            stopStream(loginStream);
+            loginStream = null;
+            loginFaceOverlay.classList.remove('active');
+            hideFaceLoginChallenge();
+            faceLoginPendingBlob = null;
+            setStatusBadge(loginFaceStatus, 'idle', 'Sẵn sàng');
+        } else {
+            startAutoFaceLogin();
+        }
+    }
+
+    registerTab.addEventListener('click', () => showTab('register'));
+    loginTab.addEventListener('click', () => showTab('login'));
+
+    /* ====== UTILITIES ====== */
+    function stopStream(stream) {
+        if (!stream) return;
+        stream.getTracks().forEach(track => track.stop());
+    }
+
+    function setMessage(el, type, text) {
+        el.className = 'msg ' + type;
+        el.textContent = text;
+    }
+
+    function clearMessage(el) {
+        el.className = 'msg';
+        el.textContent = '';
+    }
+
+    function hideFaceLoginChallenge() {
+        faceLoginChallenge.classList.remove('visible');
+        faceLoginCandidates.innerHTML = '';
+    }
+
+    function showFaceLoginChallenge(candidates) {
+        faceLoginChallenge.classList.add('visible');
+        faceLoginCandidates.innerHTML = (candidates || []).map(candidate => {
+            const avatar = candidate.avatarPath
+                ? `<img class="friend-avatar" src="${escapeHtml(candidate.avatarPath)}" alt="avatar" />`
+                : '<div class="friend-avatar"></div>';
+            return `
+                <div class="face-login-candidate">
+                    <div class="face-login-candidate-main">
+                        ${avatar}
+                        <div class="face-login-candidate-meta">
+                            <strong>${escapeHtml(candidate.displayName || candidate.username || '')}</strong>
+                            <span>@${escapeHtml(candidate.username || '')} · distance ${escapeHtml(candidate.distance ?? '')}</span>
+                        </div>
+                    </div>
+                    <div class="face-login-actions">
+                        <button class="btn-secondary face-login-select-btn" type="button" data-user-id="${escapeHtml(candidate.id || '')}">Chọn tài khoản này</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        faceLoginCandidates.querySelectorAll('.face-login-select-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const selectedUserId = btn.dataset.userId;
+                if (!selectedUserId || !faceLoginPendingBlob) return;
+                await confirmFaceLogin(selectedUserId);
+            });
+        });
+    }
+
+    function setStatusBadge(el, type, text) {
+        el.innerHTML = `<div class="scan-status ${type}"><span class="dot"></span>${text}</div>`;
+    }
+
+    function formatInboxTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    }
+
+    function getInboxTitle(item, currentUserId) {
+        if (item.conversationType !== 'PRIVATE') {
+            return item.name || 'Nhóm chat';
+        }
+        const other = (item.members || []).find(member => String(member.id) !== String(currentUserId));
+        return other?.displayName || other?.username || item.name || 'Private chat';
+    }
+
+    function getInboxPreview(item, currentUserId) {
+        if (!item.latestMessage) return 'Chưa có tin nhắn nào.';
+        const sender = item.latestMessage.sender || item.latestSender || {};
+        const prefix = String(sender.id || '') === String(currentUserId) ? 'Bạn: ' : `${sender.displayName || sender.username || 'Ai đó'}: `;
+        return prefix + (item.latestMessage.content || '');
+    }
+
+    function renderInbox(items) {
+        inboxItems = items || [];
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) {
+            messageInboxList.innerHTML = '';
+            return;
+        }
+
+        if (!inboxItems.length) {
+            messageInboxList.innerHTML = '<div class="message-inbox-empty">Chưa có hội thoại nào.</div>';
+            return;
+        }
+
+        messageInboxList.innerHTML = inboxItems.map(item => {
+            const unreadCount = Number(item.unreadCount || 0);
+            const title = escapeHtml(getInboxTitle(item, currentUser.id));
+            const preview = escapeHtml(getInboxPreview(item, currentUser.id));
+            const time = escapeHtml(formatInboxTime(item.latestMessageAt || item.updatedAt || item.createdAt));
+            const activeClass = unreadCount > 0 ? 'active' : '';
+            return `
+                <div class="message-inbox-item ${activeClass}">
+                    <div class="message-inbox-item-main">
+                        <div class="friend-avatar"></div>
+                        <div class="message-inbox-meta">
+                            <strong>${title}</strong>
+                            <span>${escapeHtml(item.conversationType || '')}${item.archived ? ' · Đã lưu trữ' : ''}</span>
+                            <div class="message-inbox-preview">${preview}</div>
+                        </div>
+                    </div>
+                    <div class="message-inbox-right">
+                        ${unreadCount > 0 ? `<span class="message-badge">${unreadCount}</span>` : ''}
+                        <span class="message-inbox-time">${time}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function loadInboxSummary() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) {
+            renderInbox([]);
+            return;
+        }
+
+        try {
+            const items = await fetchJson(`/api/conversations/users/${encodeURIComponent(currentUser.id)}/inbox`);
+            renderInbox(items || []);
+        } catch (err) {
+            messageInboxList.innerHTML = '<div class="message-inbox-empty">Không thể tải hộp thư tin nhắn.</div>';
+        }
+    }
+
+    function startInboxPolling() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) return;
+        if (inboxPollTimer) return;
+        inboxPollTimer = setInterval(loadInboxSummary, 5000);
+    }
+
+    function stopInboxPolling() {
+        if (!inboxPollTimer) return;
+        clearInterval(inboxPollTimer);
+        inboxPollTimer = null;
+    }
+
+    function saveCurrentUser(user) {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        renderCurrentUser();
+        renderFriendHub();
+        loadInboxSummary();
+        startInboxPolling();
+    }
+
+    function getCurrentUser() {
+        const raw = localStorage.getItem('currentUser');
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function renderCurrentUser() {
+        const user = getCurrentUser();
+        if (!user) {
+            currentUserBox.classList.remove('visible');
+            friendHub.classList.remove('visible');
+            messageInbox.classList.remove('visible');
+            return;
+        }
+        currentUserBox.classList.add('visible');
+        friendHub.classList.add('visible');
+        messageInbox.classList.add('visible');
+        profileUsername.textContent = user.username || '';
+        profileDisplayName.textContent = user.displayName || '';
+        profileId.textContent = user.id || '';
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function getPresenceLabel(presence) {
+        if (!presence) return 'Không rõ';
+        if (presence.online) return 'Đang online';
+        if (presence.minutesSinceLastActive == null) return 'Offline';
+        return `Offline · ${presence.minutesSinceLastActive} phút trước`;
+    }
+
+    function renderFriendSearchResults(items) {
+        friendSearchItems = items || [];
+        if (!items || !items.length) {
+            friendSearchResults.innerHTML = '<div class="friend-empty">Không có gợi ý phù hợp.</div>';
+            return;
+        }
+
+        friendSearchResults.innerHTML = items.map(item => {
+            const relation = item.relationshipStatus || 'NONE';
+            const presenceLabel = getPresenceLabel(item.presence);
+            const avatar = item.avatarPath ? `<img class="friend-avatar" src="${escapeHtml(item.avatarPath)}" alt="avatar" />` : '<div class="friend-avatar"></div>';
+
+            let actionHtml = '';
+            if (relation === 'FRIEND') {
+                actionHtml = '<span class="friend-tag">✅ Đã là bạn</span>';
+            } else if (relation === 'PENDING_OUT') {
+                actionHtml = '<span class="friend-tag muted">⏳ Đã gửi lời mời</span>';
+            } else if (relation === 'PENDING_IN') {
+                actionHtml = '<span class="friend-tag">📩 Đang chờ bạn duyệt</span>';
+            } else {
+                actionHtml = `<button class="btn-secondary friend-send-btn" type="button" data-user-id="${escapeHtml(item.id || '')}">➕ Kết bạn</button>`;
+            }
+
+            return `
+                <div class="friend-card">
+                    <div class="friend-card-main">
+                        ${avatar}
+                        <div class="friend-meta">
+                            <strong>${escapeHtml(item.displayName || item.username || '')}</strong>
+                            <span>@${escapeHtml(item.username || '')}</span>
+                            <div class="friend-tags">
+                                <span class="friend-tag muted">${escapeHtml(presenceLabel)}</span>
+                                <span class="friend-tag muted">${escapeHtml(relation)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="friend-actions">${actionHtml}</div>
+                </div>
+            `;
+        }).join('');
+
+        friendSearchResults.querySelectorAll('.friend-send-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentUser = getCurrentUser();
+                if (!currentUser?.id) return;
+                const item = friendSearchItems.find(user => String(user.id) === String(btn.dataset.userId));
+                if (!item) return;
+                await sendFriendRequest(currentUser.id, item.id);
+            });
+        });
+    }
+
+    function renderFriendList(container, items, emptyText) {
+        if (!items || !items.length) {
+            container.innerHTML = `<div class="friend-empty">${escapeHtml(emptyText)}</div>`;
+            return;
+        }
+
+        container.innerHTML = items.map(item => {
+            const avatar = item.avatarPath ? `<img class="friend-avatar" src="${escapeHtml(item.avatarPath)}" alt="avatar" />` : '<div class="friend-avatar"></div>';
+            return `
+                <div class="friend-card">
+                    <div class="friend-card-main">
+                        ${avatar}
+                        <div class="friend-meta">
+                            <strong>${escapeHtml(item.displayName || item.username || '')}</strong>
+                            <span>@${escapeHtml(item.username || '')}</span>
+                            <div class="friend-tags">
+                                <span class="friend-tag muted">${escapeHtml(getPresenceLabel(item.presence))}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="friend-actions">
+                        <span class="friend-tag">${escapeHtml(item.relationshipStatus || 'FRIEND')}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function fetchJson(url, options) {
+        const res = await fetch(url, options);
+        const text = await res.text();
+        if (!res.ok) {
+            throw new Error(text || 'Request failed');
+        }
+        return text ? JSON.parse(text) : null;
+    }
+
+    async function searchFriendSuggestions(query) {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) return;
+
+        const trimmed = query.trim();
+        if (!trimmed) {
+            friendSearchResults.innerHTML = '<div class="friend-empty">Bắt đầu gõ tên để thấy gợi ý.</div>';
+            return;
+        }
+
+        setMessage(friendSearchMessage, 'success', 'Đang tìm gợi ý...');
+        try {
+            const url = `/api/users/search?query=${encodeURIComponent(trimmed)}&viewerId=${encodeURIComponent(currentUser.id)}&limit=8`;
+            const data = await fetchJson(url);
+            clearMessage(friendSearchMessage);
+            renderFriendSearchResults(data);
+        } catch (err) {
+            setMessage(friendSearchMessage, 'error', err.message || 'Không thể tìm người dùng.');
+        }
+    }
+
+    async function sendFriendRequest(senderId, recipientId) {
+        try {
+            setMessage(friendSearchMessage, 'success', 'Đang gửi lời mời...');
+            await fetchJson('/api/friend-requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senderId, recipientId })
+            });
+            setMessage(friendSearchMessage, 'success', '✅ Đã gửi lời mời kết bạn.');
+            await refreshFriendHub();
+            if (friendSearchInput.value.trim()) {
+                await searchFriendSuggestions(friendSearchInput.value);
+            }
+        } catch (err) {
+            setMessage(friendSearchMessage, 'error', err.message || 'Gửi lời mời thất bại.');
+        }
+    }
+
+    async function respondFriendRequest(requestId, action) {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) return;
+
+        try {
+            await fetchJson(`/api/friend-requests/${requestId}/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id })
+            });
+            await refreshFriendHub();
+        } catch (err) {
+            setMessage(friendSearchMessage, 'error', err.message || 'Không thể xử lý lời mời.');
+        }
+    }
+
+    async function refreshFriendHub() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) return;
+
+        try {
+            const [incoming, friends] = await Promise.all([
+                fetchJson(`/api/friend-requests/incoming/${encodeURIComponent(currentUser.id)}`),
+                fetchJson(`/api/friend-requests/friends/${encodeURIComponent(currentUser.id)}`)
+            ]);
+
+            renderFriendList(incomingRequestsList, incoming.map(item => ({
+                id: item.id,
+                displayName: item.sender?.displayName || '',
+                username: item.sender?.username || '',
+                avatarPath: item.sender?.avatarPath || '',
+                presence: item.sender?.presence,
+                relationshipStatus: item.status,
+                message: item.message,
+                requestId: item.id
+            })), 'Chưa có lời mời đến.');
+
+            incomingRequestsList.querySelectorAll('.friend-card').forEach((card, index) => {
+                const item = incoming[index];
+                if (!item) return;
+                const actions = card.querySelector('.friend-actions');
+                actions.innerHTML = `
+                    <button class="btn-secondary" type="button" data-action="accept">✅ Đồng ý</button>
+                    <button class="btn-secondary" type="button" data-action="reject">❌ Từ chối</button>
+                `;
+                actions.querySelector('[data-action="accept"]').addEventListener('click', () => respondFriendRequest(item.id, 'accept'));
+                actions.querySelector('[data-action="reject"]').addEventListener('click', () => respondFriendRequest(item.id, 'reject'));
+            });
+
+            renderFriendList(friendsList, friends, 'Chưa có bạn bè nào.');
+        } catch (err) {
+            setMessage(friendSearchMessage, 'error', err.message || 'Không thể tải danh sách bạn bè.');
+        }
+    }
+
+    function renderFriendHub() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) {
+            friendHub.classList.remove('visible');
+            return;
+        }
+
+        friendHub.classList.add('visible');
+        renderFriendSearchResults([]);
+        renderFriendList(incomingRequestsList, [], 'Đang tải lời mời...');
+        renderFriendList(friendsList, [], 'Đang tải danh sách bạn bè...');
+        refreshFriendHub();
+    }
+
+    /* ====== CAMERA ====== */
+    async function startCamera(videoEl) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Trình duyệt không hỗ trợ camera.');
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false
+        });
+        videoEl.srcObject = stream;
+        await videoEl.play();
+        return stream;
+    }
+
+    async function captureFrame(videoEl, canvasEl) {
+        const width = videoEl.videoWidth;
+        const height = videoEl.videoHeight;
+        if (!width || !height) throw new Error('Camera chưa sẵn sàng.');
+
+        canvasEl.width = width;
+        canvasEl.height = height;
+        const ctx = canvasEl.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, width, height);
+
+        return new Promise((resolve, reject) => {
+            canvasEl.toBlob(blob => {
+                if (!blob) { reject(new Error('Không thể chụp khuôn mặt.')); return; }
+                resolve(blob);
+            }, 'image/jpeg', 0.92);
+        });
+    }
+
+    function setPreview(previewEl, blob) {
+        if (!blob) { previewEl.removeAttribute('src'); return; }
+        previewEl.src = URL.createObjectURL(blob);
+    }
+
+    function getFaceDetector() {
+        if (!faceDetectorSupported) return null;
+        if (faceDetector) return faceDetector;
+        try {
+            faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+            return faceDetector;
+        } catch (err) {
+            faceDetector = null;
+            return null;
+        }
+    }
+
+    async function detectFaceBox(videoEl) {
+        const detector = getFaceDetector();
+        if (!detector) return null;
+
+        try {
+            const faces = await detector.detect(videoEl);
+            if (!faces || !faces.length) return null;
+            const face = faces[0];
+            if (!face || !face.boundingBox) return null;
+            return face.boundingBox;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    async function captureFaceFromBox(videoEl, canvasEl, box) {
+        const width = videoEl.videoWidth;
+        const height = videoEl.videoHeight;
+        if (!width || !height) throw new Error('Camera chưa sẵn sàng.');
+
+        const scaleX = width / videoEl.clientWidth;
+        const scaleY = height / videoEl.clientHeight;
+
+        const rawX = box.x * scaleX;
+        const rawY = box.y * scaleY;
+        const rawWidth = box.width * scaleX;
+        const rawHeight = box.height * scaleY;
+
+        const paddingX = rawWidth * 0.18;
+        const paddingTop = rawHeight * 0.22;
+        const paddingBottom = rawHeight * 0.12;
+
+        const x = Math.max(0, Math.floor(rawX - paddingX));
+        const y = Math.max(0, Math.floor(rawY - paddingTop));
+        const cropWidth = Math.min(width - x, Math.ceil(rawWidth + paddingX * 2));
+        const cropHeight = Math.min(height - y, Math.ceil(rawHeight + paddingTop + paddingBottom));
+
+        canvasEl.width = cropWidth;
+        canvasEl.height = cropHeight;
+        const ctx = canvasEl.getContext('2d');
+        ctx.drawImage(videoEl, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+        return new Promise((resolve, reject) => {
+            canvasEl.toBlob(blob => {
+                if (!blob) {
+                    reject(new Error('Không thể chụp khuôn mặt.'));
+                    return;
+                }
+                resolve(blob);
+            }, 'image/jpeg', 0.94);
+        });
+    }
+
+    async function readResponseBody(res) {
+        const text = await res.text();
+        if (!text) return { text: '', json: null };
+        try {
+            return { text, json: JSON.parse(text) };
+        } catch (e) {
+            return { text, json: null };
+        }
+    }
+
+    function stopAutoFaceLogin() {
+        loginScanActive = false;
+        loginScanInFlight = false;
+        loginScanFailures = 0;
+        loginScanCooldownUntil = 0;
+        if (loginScanTimer) {
+            clearTimeout(loginScanTimer);
+            loginScanTimer = null;
+        }
+    }
+
+    function scheduleAutoFaceLoginScan(delayMs) {
+        if (!loginScanActive) return;
+        if (loginScanTimer) clearTimeout(loginScanTimer);
+        loginScanTimer = setTimeout(runAutoFaceLoginScan, delayMs);
+    }
+
+    async function startAutoFaceLogin() {
+        loginScanActive = true;
+        hideFaceLoginChallenge();
+        faceLoginPendingBlob = null;
+
+        if (!loginStream) {
+            try {
+                loginStream = await startCamera(loginFaceVideo);
+                loginFaceOverlay.classList.add('active');
+                if (faceDetectorSupported) {
+                    setMessage(loginFaceMessage, 'success', 'Hướng mặt vào camera, hệ thống sẽ chỉ chụp khi phát hiện đúng khuôn mặt...');
+                    setStatusBadge(loginFaceStatus, 'waiting', 'Đang phát hiện khuôn mặt...');
+                } else {
+                    setMessage(loginFaceMessage, 'success', 'Trình duyệt chưa hỗ trợ FaceDetector, hệ thống sẽ quét khung hình như cũ...');
+                    setStatusBadge(loginFaceStatus, 'waiting', 'Đang tự quét...');
+                }
+            } catch (err) {
+                setMessage(loginFaceMessage, 'error', err.message || 'Không thể bật camera.');
+                setStatusBadge(loginFaceStatus, 'error', 'Camera lỗi');
+                loginScanActive = false;
+                return;
+            }
+        }
+
+        scheduleAutoFaceLoginScan(250);
+    }
+
+    async function runAutoFaceLoginScan() {
+        if (!loginScanActive || loginScanInFlight || !loginStream) {
+            return;
+        }
+
+        const now = Date.now();
+        if (now < loginScanCooldownUntil) {
+            scheduleAutoFaceLoginScan(loginScanCooldownUntil - now);
+            return;
+        }
+
+        loginScanInFlight = true;
+        try {
+            hideFaceLoginChallenge();
+            const faceBox = await detectFaceBox(loginFaceVideo);
+            if (faceBox) {
+                loginFaceBlob = await captureFaceFromBox(loginFaceVideo, loginFaceCanvas, faceBox);
+            } else if (faceDetectorSupported) {
+                setMessage(loginFaceMessage, 'success', 'Chưa thấy khuôn mặt trong khung hình, hãy đưa mặt vào giữa camera...');
+                setStatusBadge(loginFaceStatus, 'waiting', 'Đang tìm khuôn mặt...');
+                loginScanCooldownUntil = Date.now() + 700;
+                scheduleAutoFaceLoginScan(700);
+                return;
+            } else {
+                loginFaceBlob = await captureFrame(loginFaceVideo, loginFaceCanvas);
+            }
+
+            setPreview(loginFacePreview, loginFaceBlob);
+
+            const payload = new FormData();
+            payload.append('faceImage', loginFaceBlob, 'face-login.jpg');
+
+            const res = await fetch('/api/auth/login/face', { method: 'POST', body: payload });
+            const { text, json } = await readResponseBody(res);
+
+            if (!res.ok) {
+                if (json && json.code === 'FACE_LOGIN_AMBIGUOUS') {
+                    faceLoginPendingBlob = loginFaceBlob;
+                    setMessage(loginFaceMessage, 'error', json.message || 'Khuôn mặt quá giống nhau.');
+                    setStatusBadge(loginFaceStatus, 'waiting', 'Cần chọn tài khoản');
+                    showFaceLoginChallenge(json.candidates || []);
+                    stopAutoFaceLogin();
+                    return;
+                }
+                loginScanFailures += 1;
+                setMessage(loginFaceMessage, 'error', text || 'Không nhận diện được tài khoản.');
+                setStatusBadge(loginFaceStatus, 'waiting', 'Đang tiếp tục quét...');
+                loginScanCooldownUntil = Date.now() + Math.min(2000 + (loginScanFailures * 500), 6000);
+                scheduleAutoFaceLoginScan(800);
+                return;
+            }
+
+            const user = JSON.parse(text);
+            saveCurrentUser(user);
+            setMessage(loginFaceMessage, 'success', '🎉 Đã nhận diện: ' + (user.displayName || user.username) + '!');
+            setStatusBadge(loginFaceStatus, 'ready', 'Đăng nhập thành công!');
+            stopAutoFaceLogin();
+            stopStream(loginStream);
+            loginStream = null;
+            loginFaceOverlay.classList.remove('active');
+        } catch (err) {
+            loginScanFailures += 1;
+            setMessage(loginFaceMessage, 'error', err.message || 'Không thể kết nối server.');
+            setStatusBadge(loginFaceStatus, 'waiting', 'Đang tiếp tục quét...');
+            loginScanCooldownUntil = Date.now() + 2000;
+            scheduleAutoFaceLoginScan(1200);
+        } finally {
+            loginScanInFlight = false;
+        }
+    }
+
+    /* ====== REGISTRATION CAMERA ====== */
+    startRegCameraBtn.addEventListener('click', async () => {
+        try {
+            stopStream(registrationStream);
+            registrationStream = await startCamera(regFaceVideo);
+            regFaceOverlay.classList.add('active');
+            setMessage(regFaceMessage, 'success', 'Camera sẵn sàng — hãy chụp khuôn mặt.');
+            setStatusBadge(regFaceStatus, 'waiting', 'Đang chờ chụp...');
+            startRegCameraBtn.textContent = '🔄 Bật lại';
+        } catch (err) {
+            setMessage(regFaceMessage, 'error', err.message || 'Không thể bật camera.');
+        }
+    });
+
+    captureRegFaceBtn.addEventListener('click', async () => {
+        try {
+            registrationFaceBlob = await captureFrame(regFaceVideo, regFaceCanvas);
+            setPreview(regFacePreview, registrationFaceBlob);
+            setMessage(regFaceMessage, 'success', '✅ Đã chụp khuôn mặt thành công!');
+            setStatusBadge(regFaceStatus, 'ready', 'Khuôn mặt đã sẵn sàng');
+            regFaceOverlay.classList.remove('active');
+            stopStream(registrationStream);
+            registrationStream = null;
+        } catch (err) {
+            setMessage(regFaceMessage, 'error', err.message || 'Lỗi chụp khuôn mặt.');
+        }
+    });
+
+    /* ====== LOGIN CAMERA ====== */
+    startLoginCameraBtn.addEventListener('click', async () => {
+        await startAutoFaceLogin();
+        startLoginCameraBtn.textContent = '🔄 Bật lại';
+    });
+
+    captureLoginFaceBtn.addEventListener('click', async () => {
+        await runAutoFaceLoginScan();
+    });
+
+    async function confirmFaceLogin(selectedUserId) {
+        try {
+            if (!faceLoginPendingBlob) {
+                setMessage(loginFaceMessage, 'error', 'Không có ảnh khuôn mặt để xác nhận.');
+                return;
+            }
+
+            const payload = new FormData();
+            payload.append('faceImage', faceLoginPendingBlob, 'face-login-confirm.jpg');
+            payload.append('selectedUserId', selectedUserId);
+
+            setMessage(loginFaceMessage, 'success', 'Đang xác nhận tài khoản đã chọn...');
+            const res = await fetch('/api/auth/login/face/confirm', { method: 'POST', body: payload });
+            const { text, json } = await readResponseBody(res);
+
+            if (!res.ok) {
+                setMessage(loginFaceMessage, 'error', (json && json.message) || text || 'Xác nhận thất bại.');
+                return;
+            }
+
+            const user = json || JSON.parse(text);
+            saveCurrentUser(user);
+            setMessage(loginFaceMessage, 'success', '🎉 Đã đăng nhập: ' + (user.displayName || user.username) + '!');
+            setStatusBadge(loginFaceStatus, 'ready', 'Đăng nhập thành công!');
+            faceLoginPendingBlob = null;
+            hideFaceLoginChallenge();
+            stopAutoFaceLogin();
+            stopStream(loginStream);
+            loginStream = null;
+            loginFaceOverlay.classList.remove('active');
+        } catch (err) {
+            setMessage(loginFaceMessage, 'error', err.message || 'Không thể xác nhận tài khoản.');
+        }
+    }
+
+    /* ====== PASSWORD STRENGTH ====== */
+    $('regPassword').addEventListener('input', (e) => {
+        const val = e.target.value;
+        const bar = $('passwordStrengthBar');
+        let strength = 0;
+        if (val.length >= 6) strength++;
+        if (val.length >= 10) strength++;
+        if (/[A-Z]/.test(val)) strength++;
+        if (/[0-9]/.test(val)) strength++;
+        if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+        const pct = (strength / 5) * 100;
+        bar.style.width = pct + '%';
+        if (strength <= 1) bar.style.background = '#ef4444';
+        else if (strength <= 3) bar.style.background = '#f59e0b';
+        else bar.style.background = '#10b981';
+    });
+
+    /* ====== AVATAR UPLOAD ====== */
+    $('uploadAvatarBtn').addEventListener('click', async () => {
+        const fileInput = $('regAvatarFile');
+        const messageEl = $('avatarUploadMessage');
+        const pathInput = $('regAvatarPath');
+
+        if (!fileInput.files || !fileInput.files.length) {
+            setMessage(messageEl, 'error', 'Chọn ảnh trước.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/uploads/avatar', { method: 'POST', body: formData });
+            const text = await res.text();
+            if (!res.ok) { setMessage(messageEl, 'error', text || 'Upload thất bại'); return; }
+            const data = JSON.parse(text);
+            pathInput.value = data.path || '';
+            setMessage(messageEl, 'success', '✅ Upload ảnh thành công!');
+
+            // Show preview in avatar circle
+            const circle = $('avatarPreviewCircle');
+            circle.innerHTML = `<img src="${data.path}" alt="avatar" />`;
+        } catch (err) {
+            setMessage(messageEl, 'error', 'Không thể kết nối server.');
+        }
+    });
+
+    /* ====== REGISTER SUBMIT ====== */
+    $('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageEl = $('registerMessage');
+        const btn = $('registerBtn');
+        const password = $('regPassword').value;
+        const confirmPassword = $('regConfirmPassword').value;
+
+        if (password !== confirmPassword) {
+            setMessage(messageEl, 'error', '❌ Mật khẩu xác nhận không khớp.');
+            return;
+        }
+
+        if (!registrationFaceBlob) {
+            setMessage(messageEl, 'error', '❌ Vui lòng chụp khuôn mặt trước khi đăng ký.');
+            return;
+        }
+
+        btn.classList.add('loading');
+        btn.textContent = 'Đang tạo tài khoản...';
+
+        const payload = new FormData();
+        payload.append('username', $('regUsername').value.trim());
+        payload.append('displayName', $('regDisplayName').value.trim());
+        payload.append('fullName', $('regFullName').value.trim());
+        payload.append('phoneNumber', $('regPhoneNumber').value.trim());
+        payload.append('email', $('regEmail').value.trim());
+        payload.append('dateOfBirth', $('regDateOfBirth').value);
+        payload.append('gender', $('regGender').value);
+        payload.append('address', $('regAddress').value.trim());
+        payload.append('bio', $('regBio').value.trim());
+        payload.append('avatarPath', $('regAvatarPath').value.trim());
+        payload.append('password', password);
+        payload.append('faceImage', registrationFaceBlob, 'face-enrollment.jpg');
+
+        try {
+            const res = await fetch('/api/auth/register/face', { method: 'POST', body: payload });
+            const text = await res.text();
+
+            btn.classList.remove('loading');
+            btn.textContent = '🚀 Tạo tài khoản';
+
+            if (!res.ok) {
+                setMessage(messageEl, 'error', text || 'Đăng ký thất bại.');
+                return;
+            }
+
+            const user = JSON.parse(text);
+            saveCurrentUser(user);
+            setMessage(messageEl, 'success', '🎉 Đăng ký thành công! Xin chào ' + (user.displayName || user.username) + '!');
+            setTimeout(() => showTab('login'), 1500);
+        } catch (err) {
+            btn.classList.remove('loading');
+            btn.textContent = '🚀 Tạo tài khoản';
+            setMessage(messageEl, 'error', 'Không thể kết nối server.');
+        }
+    });
+
+    /* ====== LOGIN SUBMIT ====== */
+    $('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageEl = $('loginMessage');
+        const btn = $('loginBtn');
+
+        const payload = {
+            username: $('loginUsername').value.trim(),
+            password: $('loginPassword').value
+        };
+
+        btn.classList.add('loading');
+        btn.textContent = 'Đang đăng nhập...';
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const text = await res.text();
+            btn.classList.remove('loading');
+            btn.textContent = '🔑 Đăng nhập';
+
+            if (!res.ok) {
+                setMessage(messageEl, 'error', text || 'Đăng nhập thất bại.');
+                return;
+            }
+
+            const user = JSON.parse(text);
+            saveCurrentUser(user);
+            setMessage(messageEl, 'success', '🎉 Đăng nhập thành công! Xin chào ' + (user.displayName || user.username) + '!');
+        } catch (err) {
+            btn.classList.remove('loading');
+            btn.textContent = '🔑 Đăng nhập';
+            setMessage(messageEl, 'error', 'Không thể kết nối server.');
+        }
+    });
+
+    /* ====== FACE LOGIN SUBMIT ====== */
+    $('faceLoginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await startAutoFaceLogin();
+    });
+
+    /* ====== COPY USER ID ====== */
+    copyUserIdBtn.addEventListener('click', async () => {
+        const raw = localStorage.getItem('currentUser');
+        if (!raw) return;
+        const user = JSON.parse(raw);
+        try {
+            await navigator.clipboard.writeText(user.id || '');
+            copyUserIdBtn.textContent = '✅ Đã copy!';
+            setTimeout(() => copyUserIdBtn.textContent = '📋 Copy ID', 1500);
+        } catch (e) {
+            alert('Không copy được: ' + (user.id || ''));
+        }
+    });
+
+    /* ====== LOGOUT ====== */
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('currentUser');
+        renderCurrentUser();
+        friendSearchInput.value = '';
+        friendSearchResults.innerHTML = '';
+        clearMessage(friendSearchMessage);
+        hideFaceLoginChallenge();
+        faceLoginPendingBlob = null;
+        stopInboxPolling();
+        inboxItems = [];
+        messageInboxList.innerHTML = '';
+    });
+
+    friendSearchInput.addEventListener('input', (e) => {
+        if (friendSearchTimer) {
+            clearTimeout(friendSearchTimer);
+        }
+        friendSearchTimer = setTimeout(() => searchFriendSuggestions(e.target.value), 250);
+    });
+
+    refreshInboxBtn.addEventListener('click', loadInboxSummary);
+    refreshFriendHubBtn.addEventListener('click', refreshFriendHub);
+
+    /* ====== CLEANUP ====== */
+    window.addEventListener('beforeunload', () => {
+        stopStream(registrationStream);
+        stopStream(loginStream);
+    });
+
+    /* ====== INIT ====== */
+    renderCurrentUser();
+    if (getCurrentUser()?.id) {
+        loadInboxSummary();
+        startInboxPolling();
+    }
+</script>
+</body>
+</html>
