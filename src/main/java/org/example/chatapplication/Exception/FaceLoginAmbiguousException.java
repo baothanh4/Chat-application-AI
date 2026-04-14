@@ -1,4 +1,4 @@
-package org.example.chatapplication.Controller;
+package org.example.chatapplication.Exception;
 
 import org.example.chatapplication.DTO.Response.FaceLoginCandidateResponse;
 import lombok.Getter;
