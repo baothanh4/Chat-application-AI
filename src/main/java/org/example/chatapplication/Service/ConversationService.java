@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.CreateGroupConversationRequest;
 import org.example.chatapplication.DTO.Request.CreatePrivateConversationRequest;
 import org.example.chatapplication.DTO.Response.ChatMessageResponse;
-import org.example.chatapplication.DTO.Response.ConversationInboxItemResponse;
 import org.example.chatapplication.DTO.Response.ConversationResponse;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.ChatMessage;
@@ -102,9 +101,9 @@ public class ConversationService {
     }
 
     @Transactional(readOnly = true)
-    public List<ConversationInboxItemResponse> listInbox(UUID userId) {
+    public List<Map<String, Object>> listInbox(UUID userId) {
         return conversationRepository.findConversationsByUserId(userId, Pageable.unpaged()).getContent().stream()
-                .map(conversation -> toInboxItem(conversation, userId))
+                .map(conversation -> buildInboxItem(conversation, userId))
                 .toList();
     }
 
@@ -132,48 +131,62 @@ public class ConversationService {
         );
     }
 
-    @Transactional(readOnly = true)
-    public ConversationInboxItemResponse toInboxItem(Conversation conversation, UUID viewerId) {
-        Set<UserResponse> members = new LinkedHashSet<>();
+    private Map<String, Object> buildInboxItem(Conversation conversation, UUID viewerId) {
+        Map<String, Object> item = new LinkedHashMap<>();
+
+        List<Map<String, Object>> members = new ArrayList<>();
         for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
-            members.add(userAccountService.toResponse(member.getUser()));
+            members.add(buildUserMap(member.getUser()));
         }
 
         ChatMessage latestMessageEntity = chatMessageRepository.findTopByConversationIdOrderByCreatedAtDesc(conversation.getId());
-        ChatMessageResponse latestMessage = latestMessageEntity == null ? null : new ChatMessageResponse(
-                latestMessageEntity.getId(),
-                latestMessageEntity.getConversation().getId(),
-                userAccountService.toResponse(latestMessageEntity.getSender()),
-                latestMessageEntity.getMessageType(),
-                latestMessageEntity.getStatus(),
-                latestMessageEntity.getContent(),
-                latestMessageEntity.getClientMessageId(),
-                latestMessageEntity.getCreatedAt(),
-                latestMessageEntity.getDeliveredAt(),
-                latestMessageEntity.getReadAt()
-        );
+        Map<String, Object> latestMessage = latestMessageEntity == null ? null : buildMessageMap(latestMessageEntity);
 
         ConversationMember viewerMember = conversationMemberRepository.findByConversationIdAndUserId(conversation.getId(), viewerId).orElse(null);
-        java.time.Instant lastReadAt = viewerMember == null ? null : viewerMember.getLastReadAt();
+        Instant lastReadAt = viewerMember == null ? null : viewerMember.getLastReadAt();
         long unreadCount = chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversation.getId(), Pageable.unpaged()).stream()
                 .filter(message -> !message.getSender().getId().equals(viewerId))
                 .filter(message -> lastReadAt == null || message.getCreatedAt().isAfter(lastReadAt))
                 .count();
 
-        return new ConversationInboxItemResponse(
-                conversation.getId(),
-                conversation.getType(),
-                conversation.getName(),
-                conversation.getDescription(),
-                conversation.isArchived(),
-                members,
-                latestMessage,
-                latestMessage == null ? null : latestMessage.getSender(),
-                latestMessage == null ? null : latestMessage.getCreatedAt(),
-                unreadCount,
-                conversation.getCreatedAt(),
-                conversation.getUpdatedAt()
-        );
+        item.put("conversationId", conversation.getId());
+        item.put("conversationType", conversation.getType());
+        item.put("name", conversation.getName());
+        item.put("description", conversation.getDescription());
+        item.put("archived", conversation.isArchived());
+        item.put("members", members);
+        item.put("latestMessage", latestMessage);
+        item.put("latestSender", latestMessageEntity == null ? null : buildUserMap(latestMessageEntity.getSender()));
+        item.put("latestMessageAt", latestMessageEntity == null ? null : latestMessageEntity.getCreatedAt());
+        item.put("unreadCount", unreadCount);
+        item.put("createdAt", conversation.getCreatedAt());
+        item.put("updatedAt", conversation.getUpdatedAt());
+        return item;
+    }
+
+    private Map<String, Object> buildUserMap(UserAccount user) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("id", user.getId());
+        summary.put("username", user.getUsername());
+        summary.put("displayName", user.getDisplayName());
+        summary.put("fullName", user.getFullName());
+        summary.put("avatarPath", user.getAvatarPath());
+        return summary;
+    }
+
+    private Map<String, Object> buildMessageMap(ChatMessage message) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("id", message.getId());
+        summary.put("conversationId", message.getConversation().getId());
+        summary.put("sender", buildUserMap(message.getSender()));
+        summary.put("messageType", message.getMessageType());
+        summary.put("status", message.getStatus());
+        summary.put("content", message.getContent());
+        summary.put("clientMessageId", message.getClientMessageId());
+        summary.put("createdAt", message.getCreatedAt());
+        summary.put("deliveredAt", message.getDeliveredAt());
+        summary.put("readAt", message.getReadAt());
+        return summary;
     }
 
     @Transactional(readOnly = true)

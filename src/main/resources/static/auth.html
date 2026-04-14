@@ -1098,6 +1098,11 @@
             box-shadow: 0 0 0 1px rgba(99,102,241,0.12) inset;
         }
 
+        .message-inbox-item.selected {
+            border-color: rgba(139,92,246,0.55);
+            background: rgba(139,92,246,0.08);
+        }
+
         .message-inbox-item-main {
             min-width: 0;
             display: flex;
@@ -1162,6 +1167,206 @@
             padding: 8px 0;
         }
 
+        /* ====== AI INSIGHTS ====== */
+        .ai-insights {
+            display: none;
+            margin-top: 24px;
+            padding: 18px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            background: var(--bg-glass);
+        }
+
+        .ai-insights.visible { display: block; }
+
+        .ai-insights-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .ai-insights-header h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .ai-insights-header p {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .ai-insights-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .ai-conversation-select {
+            min-width: 260px;
+            max-width: 100%;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .ai-summary-card,
+        .ai-chart-card,
+        .ai-task-card {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.03);
+            padding: 14px;
+        }
+
+        .ai-summary-card { margin-bottom: 14px; }
+
+        .ai-summary-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(99,102,241,0.12);
+            color: var(--accent-primary);
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .ai-summary-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .ai-summary-bullets {
+            list-style: none;
+            display: grid;
+            gap: 8px;
+        }
+
+        .ai-summary-bullets li {
+            color: var(--text-secondary);
+            font-size: 13px;
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .ai-summary-bullets li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        .ai-task-layout {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 12px;
+        }
+
+        .ai-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .ai-card-header strong { font-size: 14px; }
+
+        .ai-card-header span {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .ai-task-chart { display: grid; gap: 10px; }
+
+        .ai-task-bar-row { display: grid; gap: 6px; }
+
+        .ai-task-bar-row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .ai-task-bar-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .ai-task-bar-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: var(--accent-gradient);
+        }
+
+        .ai-task-list { display: grid; gap: 10px; }
+
+        .ai-task-item {
+            border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-md);
+            padding: 12px;
+        }
+
+        .ai-task-item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .ai-task-title {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
+        .ai-task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .ai-task-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text-secondary);
+        }
+
+        .ai-task-chip.high { background: rgba(239,68,68,0.12); color: #fecaca; }
+        .ai-task-chip.medium { background: rgba(245,158,11,0.12); color: #fde68a; }
+        .ai-task-chip.low { background: rgba(16,185,129,0.12); color: #a7f3d0; }
+
+        .ai-task-empty {
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 6px 0;
+        }
+
         /* ====== RESPONSIVE ====== */
         @media (max-width: 900px) {
             .auth-shell {
@@ -1175,6 +1380,10 @@
             .auth-panel { padding: 28px 20px; }
             .camera-grid { grid-template-columns: 1fr; }
             .form-grid { grid-template-columns: 1fr; }
+            .ai-task-layout { grid-template-columns: 1fr; }
+            .ai-insights-header { flex-direction: column; }
+            .ai-insights-controls { justify-content: flex-start; }
+            .ai-conversation-select { min-width: 0; width: 100%; }
         }
 
         /* ====== LOADING SPINNER ====== */
@@ -1561,6 +1770,42 @@
                 </div>
                 <div class="message-inbox-list" id="messageInboxList"></div>
             </div>
+
+            <div class="ai-insights" id="aiInsights">
+                <div class="ai-insights-header">
+                    <div>
+                        <h3>🤖 AI tổng hợp tin nhắn & task</h3>
+                        <p>Chọn một hội thoại để xem summary, task ưu tiên và deadline trực quan.</p>
+                    </div>
+                    <div class="ai-insights-controls">
+                        <select id="aiConversationSelect" class="ai-conversation-select"></select>
+                        <button class="btn-secondary" id="refreshAiBtn" type="button">🔄 Tạo lại AI</button>
+                    </div>
+                </div>
+
+                <div class="ai-summary-card">
+                    <div class="ai-summary-label">AI summary</div>
+                    <div class="ai-summary-text" id="aiSummaryText">Chọn một hội thoại để xem tóm tắt.</div>
+                    <ul class="ai-summary-bullets" id="aiSummaryBullets"></ul>
+                </div>
+
+                <div class="ai-task-layout">
+                    <div class="ai-chart-card">
+                        <div class="ai-card-header">
+                            <strong>📊 Task theo mức ưu tiên & deadline</strong>
+                            <span id="aiChartMeta">Chưa có dữ liệu</span>
+                        </div>
+                        <div class="ai-task-chart" id="aiTaskChart"></div>
+                    </div>
+                    <div class="ai-task-card">
+                        <div class="ai-card-header">
+                            <strong>🗂️ Danh sách task</strong>
+                            <span id="aiTaskCount">0 task</span>
+                        </div>
+                        <div class="ai-task-list" id="aiTaskList"></div>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 </div>
@@ -1590,6 +1835,15 @@
     const messageInbox = $('messageInbox');
     const messageInboxList = $('messageInboxList');
     const refreshInboxBtn = $('refreshInboxBtn');
+    const aiInsights = $('aiInsights');
+    const aiConversationSelect = $('aiConversationSelect');
+    const refreshAiBtn = $('refreshAiBtn');
+    const aiSummaryText = $('aiSummaryText');
+    const aiSummaryBullets = $('aiSummaryBullets');
+    const aiChartMeta = $('aiChartMeta');
+    const aiTaskChart = $('aiTaskChart');
+    const aiTaskList = $('aiTaskList');
+    const aiTaskCount = $('aiTaskCount');
 
     const regFaceVideo = $('regFaceVideo');
     const regFaceCanvas = $('regFaceCanvas');
@@ -1627,6 +1881,8 @@
     let faceLoginPendingBlob = null;
     let inboxItems = [];
     let inboxPollTimer = null;
+    let aiInsightCache = new Map();
+    let selectedAiConversationId = null;
 
     /* ====== TAB SWITCHING ====== */
     function showTab(tabName) {
@@ -1745,11 +2001,15 @@
         const currentUser = getCurrentUser();
         if (!currentUser?.id) {
             messageInboxList.innerHTML = '';
+            renderAiConversationOptions();
+            renderAiInsightEmpty();
             return;
         }
 
         if (!inboxItems.length) {
             messageInboxList.innerHTML = '<div class="message-inbox-empty">Chưa có hội thoại nào.</div>';
+            renderAiConversationOptions();
+            renderAiInsightEmpty();
             return;
         }
 
@@ -1759,8 +2019,9 @@
             const preview = escapeHtml(getInboxPreview(item, currentUser.id));
             const time = escapeHtml(formatInboxTime(item.latestMessageAt || item.updatedAt || item.createdAt));
             const activeClass = unreadCount > 0 ? 'active' : '';
+            const selectedClass = String(selectedAiConversationId || '') === String(item.conversationId || '') ? 'selected' : '';
             return `
-                <div class="message-inbox-item ${activeClass}">
+                <div class="message-inbox-item ${activeClass} ${selectedClass}" data-conversation-id="${escapeHtml(item.conversationId || '')}">
                     <div class="message-inbox-item-main">
                         <div class="friend-avatar"></div>
                         <div class="message-inbox-meta">
@@ -1776,6 +2037,16 @@
                 </div>
             `;
         }).join('');
+
+        renderAiConversationOptions();
+        if (!selectedAiConversationId || !inboxItems.some(item => String(item.conversationId) === String(selectedAiConversationId))) {
+            selectedAiConversationId = inboxItems[0]?.conversationId || null;
+        }
+        if (selectedAiConversationId) {
+            loadAiInsight(selectedAiConversationId);
+        } else {
+            renderAiInsightEmpty();
+        }
     }
 
     async function loadInboxSummary() {
@@ -1811,6 +2082,7 @@
         renderCurrentUser();
         renderFriendHub();
         loadInboxSummary();
+        renderAiConversationOptions();
         startInboxPolling();
     }
 
@@ -1830,14 +2102,180 @@
             currentUserBox.classList.remove('visible');
             friendHub.classList.remove('visible');
             messageInbox.classList.remove('visible');
+            aiInsights.classList.remove('visible');
             return;
         }
         currentUserBox.classList.add('visible');
         friendHub.classList.add('visible');
         messageInbox.classList.add('visible');
+        aiInsights.classList.add('visible');
         profileUsername.textContent = user.username || '';
         profileDisplayName.textContent = user.displayName || '';
         profileId.textContent = user.id || '';
+    }
+
+    function renderAiConversationOptions() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) {
+            aiConversationSelect.innerHTML = '';
+            return;
+        }
+
+        const options = inboxItems.map(item => {
+            const label = getInboxTitle(item, currentUser.id);
+            return `<option value="${escapeHtml(item.conversationId || '')}">${escapeHtml(label)}</option>`;
+        }).join('');
+
+        aiConversationSelect.innerHTML = options || '<option value="">Không có hội thoại</option>';
+        if (selectedAiConversationId && inboxItems.some(item => String(item.conversationId) === String(selectedAiConversationId))) {
+            aiConversationSelect.value = String(selectedAiConversationId);
+        } else if (inboxItems.length) {
+            selectedAiConversationId = inboxItems[0].conversationId;
+            aiConversationSelect.value = String(selectedAiConversationId);
+        }
+    }
+
+    function renderAiInsightEmpty(message) {
+        aiSummaryText.textContent = message || 'Chọn một hội thoại để xem tóm tắt.';
+        aiSummaryBullets.innerHTML = '';
+        aiChartMeta.textContent = 'Chưa có dữ liệu';
+        aiTaskChart.innerHTML = '<div class="ai-task-empty">Chưa có task để hiển thị.</div>';
+        aiTaskList.innerHTML = '<div class="ai-task-empty">Chưa có task để hiển thị.</div>';
+        aiTaskCount.textContent = '0 task';
+    }
+
+    function formatAiRelativeTime(value) {
+        if (!value) return 'Không có deadline';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Không có deadline';
+        const diff = date.getTime() - Date.now();
+        const minutes = Math.round(diff / 60000);
+        if (minutes < 0) return `Quá hạn ${Math.abs(minutes)} phút`;
+        if (minutes < 60) return `Còn ${minutes} phút`;
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return `Còn ${hours} giờ`;
+        const days = Math.round(hours / 24);
+        return `Còn ${days} ngày`;
+    }
+
+    function priorityRank(priority) {
+        if (priority === 'HIGH') return 0;
+        if (priority === 'MEDIUM') return 1;
+        return 2;
+    }
+
+    function normalizeInsightData(data) {
+        const tasks = [...(data?.tasks || [])].sort((a, b) => {
+            const pr = priorityRank(a.priority) - priorityRank(b.priority);
+            if (pr !== 0) return pr;
+            const aTime = a.dueAt ? new Date(a.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+            const bTime = b.dueAt ? new Date(b.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+            return aTime - bTime;
+        });
+
+        return { ...data, tasks };
+    }
+
+    function renderAiInsight(data) {
+        if (!data) {
+            renderAiInsightEmpty();
+            return;
+        }
+
+        const insight = normalizeInsightData(data);
+        aiSummaryText.textContent = insight.summary || 'Không có summary.';
+        aiSummaryBullets.innerHTML = (insight.summaryBullets || []).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+        aiChartMeta.textContent = `${insight.openTaskCount || 0} task mở · ${insight.overdueTaskCount || 0} task quá hạn`;
+        aiTaskCount.textContent = `${(insight.tasks || []).length} task`;
+
+        if (!insight.tasks || !insight.tasks.length) {
+            aiTaskChart.innerHTML = '<div class="ai-task-empty">Chưa có task AI nào được phát hiện.</div>';
+            aiTaskList.innerHTML = '<div class="ai-task-empty">Chưa có task AI nào được phát hiện.</div>';
+            return;
+        }
+
+        const maxScore = Math.max(...insight.tasks.map(task => {
+            if (task.overdue) return 100;
+            if (task.dueAt) {
+                const hours = Math.max(1, (new Date(task.dueAt).getTime() - Date.now()) / 3600000);
+                return Math.max(10, Math.min(100, 120 - hours * 4));
+            }
+            return 30;
+        }));
+
+        aiTaskChart.innerHTML = insight.tasks.map((task, index) => {
+            const score = task.overdue ? 100 : (task.dueAt ? Math.max(10, Math.min(100, 120 - Math.max(1, (new Date(task.dueAt).getTime() - Date.now()) / 3600000) * 4)) : 30);
+            const percent = Math.max(8, Math.round((score / maxScore) * 100));
+            return `
+                <div class="ai-task-bar-row">
+                    <div class="ai-task-bar-row-top">
+                        <span>#${index + 1} · ${escapeHtml(task.title || '')}</span>
+                        <span>${escapeHtml(formatAiRelativeTime(task.dueAt))}</span>
+                    </div>
+                    <div class="ai-task-bar-track">
+                        <div class="ai-task-bar-fill" style="width:${percent}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        aiTaskList.innerHTML = insight.tasks.map(task => {
+            const priorityClass = String(task.priority || '').toLowerCase();
+            const meta = [
+                task.dueAt ? `Deadline: ${new Date(task.dueAt).toLocaleString('vi-VN')}` : 'Chưa có deadline',
+                `Độ tin cậy: ${Math.round((task.confidenceScore || 0) * 100)}%`,
+                task.overdue ? 'Quá hạn' : 'Đúng hạn'
+            ];
+            return `
+                <div class="ai-task-item">
+                    <div class="ai-task-item-top">
+                        <div class="ai-task-title">${escapeHtml(task.title || '')}</div>
+                        <span class="ai-task-chip ${priorityClass}">${escapeHtml(task.priority || 'MEDIUM')}</span>
+                    </div>
+                    <div>${escapeHtml(task.description || task.sourceMessageSnippet || '')}</div>
+                    <div class="ai-task-meta">
+                        ${meta.map(item => `<span class="ai-task-chip">${escapeHtml(item)}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function loadAiInsight(conversationId) {
+        if (!conversationId) {
+            renderAiInsightEmpty();
+            return;
+        }
+
+        selectedAiConversationId = conversationId;
+        aiConversationSelect.value = String(conversationId);
+
+        if (aiInsightCache.has(String(conversationId))) {
+            renderAiInsight(aiInsightCache.get(String(conversationId)));
+        }
+
+        try {
+            const data = await fetchJson(`/api/ai/conversations/${encodeURIComponent(conversationId)}`);
+            aiInsightCache.set(String(conversationId), data);
+            renderAiInsight(data);
+        } catch (err) {
+            renderAiInsightEmpty(err.message || 'Không thể tải AI insight.');
+        }
+    }
+
+    async function refreshAiInsight(conversationId) {
+        if (!conversationId) {
+            renderAiInsightEmpty();
+            return;
+        }
+
+        try {
+            const data = await fetchJson(`/api/ai/conversations/${encodeURIComponent(conversationId)}/refresh`, { method: 'POST' });
+            aiInsightCache.set(String(conversationId), data);
+            renderAiInsight(data);
+        } catch (err) {
+            renderAiInsightEmpty(err.message || 'Không thể tạo lại AI insight.');
+        }
     }
 
     function escapeHtml(value) {
@@ -2531,6 +2969,18 @@
         stopInboxPolling();
         inboxItems = [];
         messageInboxList.innerHTML = '';
+        aiInsightCache.clear();
+        selectedAiConversationId = null;
+        renderAiInsightEmpty();
+    });
+
+    messageInboxList.addEventListener('click', (e) => {
+        const item = e.target.closest('.message-inbox-item');
+        if (!item) return;
+        const conversationId = item.dataset.conversationId;
+        if (!conversationId) return;
+        selectedAiConversationId = conversationId;
+        loadAiInsight(conversationId);
     });
 
     friendSearchInput.addEventListener('input', (e) => {
@@ -2542,6 +2992,8 @@
 
     refreshInboxBtn.addEventListener('click', loadInboxSummary);
     refreshFriendHubBtn.addEventListener('click', refreshFriendHub);
+    aiConversationSelect.addEventListener('change', (e) => loadAiInsight(e.target.value));
+    refreshAiBtn.addEventListener('click', () => refreshAiInsight(aiConversationSelect.value || selectedAiConversationId));
 
     /* ====== CLEANUP ====== */
     window.addEventListener('beforeunload', () => {

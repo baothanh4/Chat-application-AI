@@ -18,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -47,7 +48,7 @@ public class ConversationController {
     }
 
     @GetMapping("/users/{userId}/inbox")
-    ResponseEntity<List<ConversationInboxItemResponse>> listInbox(@PathVariable UUID userId) {
+    ResponseEntity<List<Map<String, Object>>> listInbox(@PathVariable UUID userId) {
         return ResponseEntity.ok(conversationService.listInbox(userId));
     }
 
