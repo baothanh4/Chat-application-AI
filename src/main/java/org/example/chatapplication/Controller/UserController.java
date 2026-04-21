@@ -8,6 +8,7 @@ import org.example.chatapplication.DTO.Request.CreateUserRequest;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.DTO.Response.UserSearchResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
+import org.example.chatapplication.Service.AiBotService;
 import org.example.chatapplication.Service.UserDirectoryService;
 import org.example.chatapplication.Service.UserAccountService;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class UserController {
     private final UserAccountService userAccountService;
     private final UserDirectoryService userDirectoryService;
+    private final AiBotService aiBotService;
 
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
@@ -60,5 +62,17 @@ public class UserController {
                                                                 @RequestParam(required = false) UUID viewerId,
                                                                 @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(userDirectoryService.searchSuggestions(query, limit, viewerId));
+    }
+
+    /**
+     * Lấy thông tin tài khoản AI Bot (dùng cho Frontend mở chat với bot).
+     */
+    @GetMapping("/bot")
+    public ResponseEntity<UserResponse> getBotUser() {
+        UUID botId = aiBotService.getBotUserId();
+        if (botId == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(userAccountService.toResponse(userAccountService.requireUser(botId)));
     }
 }

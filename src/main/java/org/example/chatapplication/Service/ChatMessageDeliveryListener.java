@@ -36,6 +36,7 @@ public class ChatMessageDeliveryListener {
     private final PresenceService presenceService;
     private final NotificationService notificationService;
     private final ConversationAiService conversationAiService;
+    private final AiBotService aiBotService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Async("chatTaskExecutor")
@@ -82,6 +83,66 @@ public class ChatMessageDeliveryListener {
             }
         } catch (Exception ex) {
             log.warn("AI insight refresh failed for conversation {}: {}", conversation.getId(), ex.getMessage());
+        }
+
+        // ── Bot reply: nếu có AI Bot là thành viên và người gửi không phải bot ──
+        try {
+            UUID botId = aiBotService.getBotUserId();
+            if (botId != null && !event.senderId().equals(botId)) {
+                boolean botIsMember = conversationMemberRepository.findByConversationId(conversation.getId())
+                        .stream()
+                        .anyMatch(m -> botId.equals(m.getUser().getId()));
+
+                if (botIsMember) {
+                    String userMessage = message.getContent();
+                    String botReplyText = aiBotService.generateBotReply(userMessage, conversation.getId());
+
+                    // Tạo message từ bot
+                    ChatMessage botMessage = new ChatMessage();
+                    botMessage.setConversation(conversation);
+                    botMessage.setSender(conversationMemberRepository.findByConversationId(conversation.getId())
+                            .stream()
+                            .filter(m -> botId.equals(m.getUser().getId()))
+                            .findFirst()
+                            .map(org.example.chatapplication.Model.Entity.ConversationMember::getUser)
+                            .orElseThrow());
+                    botMessage.setContent(botReplyText);
+                    botMessage.setMessageType(org.example.chatapplication.Model.Enum.MessageType.TEXT);
+                    botMessage.setStatus(org.example.chatapplication.Model.Enum.MessageStatus.DELIVERED);
+                    botMessage.setClientMessageId("bot-" + java.util.UUID.randomUUID());
+                    ChatMessage savedBot = chatMessageRepository.save(botMessage);
+
+                    // Map sang response DTO thủ công
+                    Map<String, Object> botSender = new LinkedHashMap<>();
+                    botSender.put("id", savedBot.getSender().getId());
+                    botSender.put("username", savedBot.getSender().getUsername());
+                    botSender.put("displayName", savedBot.getSender().getDisplayName());
+                    botSender.put("avatarPath", savedBot.getSender().getAvatarPath());
+
+                    Map<String, Object> botMsgMap = new LinkedHashMap<>();
+                    botMsgMap.put("id", savedBot.getId());
+                    botMsgMap.put("conversationId", conversation.getId());
+                    botMsgMap.put("sender", botSender);
+                    botMsgMap.put("messageType", savedBot.getMessageType());
+                    botMsgMap.put("status", savedBot.getStatus());
+                    botMsgMap.put("content", savedBot.getContent());
+                    botMsgMap.put("clientMessageId", savedBot.getClientMessageId());
+                    botMsgMap.put("createdAt", savedBot.getCreatedAt());
+                    botMsgMap.put("deliveredAt", savedBot.getDeliveredAt());
+                    botMsgMap.put("readAt", savedBot.getReadAt());
+
+                    // Gửi reply qua STOMP
+                    messagingTemplate.convertAndSend("/topic/conversations/" + conversation.getId(), (Object) botMsgMap);
+
+                    // Cập nhật inbox cho tất cả members
+                    for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
+                        Map<String, Object> summary = buildInboxSummary(conversation, member.getUser().getId());
+                        messagingTemplate.convertAndSend("/topic/users/" + member.getUser().getId() + "/inbox", (Object) summary);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Bot reply failed for conversation {}: {}", conversation.getId(), ex.getMessage());
         }
 
         log.debug("Message {} processed for conversation {}", message.getId(), conversation.getId());
