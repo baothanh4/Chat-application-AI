@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.example.chatapplication.DTO.Request.CreateUserRequest;
+import org.example.chatapplication.DTO.Request.ChangePasswordRequest;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.DTO.Response.UserSearchResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
@@ -42,6 +43,38 @@ public class UserController {
     @PutMapping("/{userId}")
     public ResponseEntity<UserResponse> updateUser(@PathVariable UUID userId, @RequestBody @Valid org.example.chatapplication.DTO.Request.UpdateUserRequest request) {
         UserAccount user = userAccountService.updateProfile(userId, request);
+        return ResponseEntity.ok(userAccountService.toResponse(user));
+    }
+
+    @PutMapping("/{userId}/password")
+    public ResponseEntity<UserResponse> changePassword(@PathVariable UUID userId, @RequestBody @Valid ChangePasswordRequest request) {
+        UserAccount user = userAccountService.changePassword(userId, request);
+        return ResponseEntity.ok(userAccountService.toResponse(user));
+    }
+
+    @PutMapping("/{userId}/face/disable")
+    public ResponseEntity<UserResponse> disableFaceLogin(@PathVariable UUID userId) {
+        UserAccount user = userAccountService.disableFaceLogin(userId);
+        return ResponseEntity.ok(userAccountService.toResponse(user));
+    }
+
+    @PutMapping("/{userId}/face/enable")
+    public ResponseEntity<UserResponse> enableFaceLogin(@PathVariable UUID userId) {
+        UserAccount user = userAccountService.enableFaceLogin(userId);
+        return ResponseEntity.ok(userAccountService.toResponse(user));
+    }
+
+
+    @DeleteMapping("/{userId}/face")
+    public ResponseEntity<UserResponse> deleteFaceEnrollment(@PathVariable UUID userId) {
+        UserAccount user = userAccountService.deleteFaceEnrollment(userId);
+        return ResponseEntity.ok(userAccountService.toResponse(user));
+    }
+
+    @PostMapping(value = "/{userId}/face", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserResponse> replaceFaceEnrollment(@PathVariable UUID userId,
+                                                              @RequestParam("faceImage") org.springframework.web.multipart.MultipartFile faceImage) {
+        UserAccount user = userAccountService.replaceFaceEnrollment(userId, faceImage);
         return ResponseEntity.ok(userAccountService.toResponse(user));
     }
 

@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,8 @@ import java.util.stream.Collectors;
 public class AiBotService {
 
     private static final Duration OPENROUTER_COOLDOWN = Duration.ofMinutes(2);
+    private static final ZoneId VIETNAM_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter VIETNAM_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm, dd/MM/yyyy");
 
     private final UserAccountRepository userAccountRepository;
     private final ConversationAiService conversationAiService;
@@ -117,6 +120,10 @@ public class AiBotService {
     public String generateBotReply(String userMessage, UUID conversationId) {
         if (userMessage == null || userMessage.isBlank()) {
             return helpMessage();
+        }
+
+        if (isVietnamTimeQuestion(userMessage)) {
+            return buildVietnamTimeReply();
         }
 
         if (isOpenRouterCoolingDown(conversationId)) {
@@ -233,8 +240,15 @@ public class AiBotService {
     private String buildSystemPrompt(UUID conversationId) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Bạn là AI Assistant 🤖 — một trợ lý thông minh tích hợp trong ứng dụng chat.\n");
-        prompt.append("Bạn trả lời bằng tiếng Việt, ngắn gọn, thân thiện và hữu ích.\n");
-        prompt.append("Bạn có thể hỗ trợ: tóm tắt cuộc trò chuyện, quản lý task, deadline, trả lời câu hỏi tự do.\n\n");
+        prompt.append("Bạn trả lời bằng tiếng Việt, ngắn gọn, thân thiện, hữu ích và chủ động.\n");
+        prompt.append("Bạn là trợ lý đa năng: trả lời câu hỏi tự do, giải thích kiến thức, gợi ý nội dung, dịch thuật, tóm tắt, quản lý task, deadline, và hỗ trợ hội thoại thông thường.\n");
+        prompt.append("Không được giới hạn câu trả lời chỉ vào tóm tắt hoặc task. Nếu user hỏi điều gì hợp lý thì hãy trả lời trực tiếp.\n");
+        prompt.append("Nếu user hỏi giờ hiện tại ở Việt Nam, hãy dùng múi giờ Asia/Ho_Chi_Minh được cung cấp trong ngữ cảnh hệ thống.\n\n");
+
+        ZonedDateTime vietnamNow = ZonedDateTime.now(VIETNAM_ZONE_ID);
+        prompt.append("Thời gian hiện tại ở Việt Nam: ")
+                .append(VIETNAM_TIME_FORMATTER.format(vietnamNow))
+                .append(".\n\n");
 
         // Thêm insight context nếu có
         try {
@@ -269,7 +283,7 @@ public class AiBotService {
             log.debug("Could not load insight for system prompt: {}", e.getMessage());
         }
 
-        prompt.append("Hãy trả lời câu hỏi/yêu cầu của user dựa trên ngữ cảnh trên nếu liên quan.");
+        prompt.append("Hãy trả lời câu hỏi/yêu cầu của user dựa trên ngữ cảnh trên nếu liên quan, nhưng vẫn phải xử lý tốt cả câu hỏi ngoài ngữ cảnh.");
         return prompt.toString();
     }
 
@@ -299,22 +313,25 @@ public class AiBotService {
     private String ruleBasedReply(String userMessage, UUID conversationId) {
         String normalized = userMessage.toLowerCase().trim();
 
+        if (isVietnamTimeQuestion(normalized)) {
+            return buildVietnamTimeReply();
+        }
+
         if (matchesAny(normalized, "help", "giúp", "hướng dẫn", "lệnh", "commands")) {
             return helpMessage();
         }
         if (matchesAny(normalized, "tóm tắt", "tom tat", "summary", "tổng hợp", "tổng kết", "phân tích")) {
             return buildSummaryReply(conversationId);
         }
-        if (matchesAny(normalized, "task", "việc", "công việc", "deadline", "làm gì", "cần làm")) {
+        if (matchesAny(normalized, "task", "việc cần", "công việc", "deadline", "cần làm", "phải làm", "giao việc", "làm xong")) {
             return buildTasksReply(conversationId);
         }
         if (matchesAny(normalized, "hello", "hi", "chào", "xin chào", "hey")) {
             return "👋 Xin chào! Tôi là AI Assistant.\n\n" +
-                   "Nhắn **\"help\"** để xem danh sách lệnh hỗ trợ. " +
-                   "Bạn cũng có thể hỏi bất kỳ điều gì! 🚀";
+                   "Bạn có thể hỏi bất kỳ điều gì: câu hỏi thường ngày, kiến thức chung, viết nội dung, tóm tắt, task, deadline, và nhiều hơn nữa.\n\n" +
+                   "Nhắn **\"help\"** nếu muốn xem các gợi ý nhanh. 🚀";
         }
-        return "💬 Tôi nhận được tin nhắn của bạn!\n\n" +
-               "Nhắn **\"help\"** để xem những gì tôi có thể làm nhé. 😊";
+        return buildGeneralFallbackReply(userMessage);
     }
 
     private boolean matchesAny(String text, String... keywords) {
@@ -378,9 +395,30 @@ public class AiBotService {
         return "🤖 **AI Assistant" + (hasApiKey ? " (OpenRouter AI)" : "") + " — Lệnh:**\n\n" +
                "• **tóm tắt** — Tổng hợp nội dung cuộc trò chuyện\n" +
                "• **task** — Liệt kê các task + deadline được nhận diện\n" +
+               "• **hỏi tự do** — Bạn có thể hỏi bất kỳ điều gì như kiến thức chung, viết nội dung, dịch, gợi ý, thời gian, v.v.\n" +
                "• **help** — Xem lại lệnh này\n\n" +
                (hasApiKey
-                   ? "✨ Tôi đang dùng **" + openRouterModel + "** — bạn có thể hỏi bất kỳ điều gì!\n"
-                   : "💡 Thêm `OPENROUTER_API_KEY` vào `.env` để tôi có thể trả lời thông minh hơn!\n");
+                   ? "✨ Tôi đang dùng **" + openRouterModel + "** — hãy hỏi như đang trò chuyện với một trợ lý AI thực thụ.\n"
+                   : "💡 Thêm `OPENROUTER_API_KEY` vào `.env` để tôi trả lời thông minh và linh hoạt hơn!\n");
+    }
+
+    private boolean isVietnamTimeQuestion(String text) {
+        String normalized = text.toLowerCase().trim();
+        return matchesAny(normalized,
+                "mấy giờ", "may gio", "bao nhiêu giờ", "bao nhieu gio", "giờ việt nam", "gio viet nam",
+                "giờ ở việt nam", "gio o viet nam", "current time", "what time", "time is it", "bây giờ là mấy giờ",
+                "bay gio la may gio", "bây giờ mấy giờ", "bay gio may gio", "đang mấy giờ", "dang may gio");
+    }
+
+    private String buildVietnamTimeReply() {
+        ZonedDateTime now = ZonedDateTime.now(VIETNAM_ZONE_ID);
+        return "🕒 Bây giờ ở Việt Nam là **" + VIETNAM_TIME_FORMATTER.format(now) + "**.\n\n"
+                + "Nếu bạn muốn, tôi cũng có thể chuyển sang múi giờ khác hoặc nhắc bạn theo thời gian cụ thể.";
+    }
+
+    private String buildGeneralFallbackReply(String userMessage) {
+        return "💬 Tôi đã nhận câu hỏi của bạn.\n\n"
+                + "Hiện tôi đang ở chế độ dự phòng nên chưa trả lời sâu như AI đầy đủ, nhưng bạn vẫn có thể hỏi bất kỳ chủ đề nào: kiến thức chung, lập trình, viết nội dung, dịch thuật, tóm tắt, task, deadline, hoặc câu hỏi thường ngày.\n\n"
+                + "Hãy gửi lại câu hỏi theo cách cụ thể hơn, và nếu có OpenRouter tôi sẽ trả lời chi tiết hơn ngay.";
     }
 }

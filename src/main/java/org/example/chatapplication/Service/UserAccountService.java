@@ -2,6 +2,7 @@ package org.example.chatapplication.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.CreateUserRequest;
+import org.example.chatapplication.DTO.Request.ChangePasswordRequest;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Repository.UserAccountRepository;
@@ -10,7 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -20,6 +23,7 @@ public class UserAccountService {
     private final FileStorageService fileStorageService;
     private final PresenceService presenceService;
     private final PasswordHasher passwordHasher;
+    private final FaceVerificationService faceVerificationService;
 
     @Transactional
     public UserAccount createOrUpdate(CreateUserRequest request) {
@@ -59,6 +63,91 @@ public class UserAccountService {
         user.setEmail(request.getEmail());
         
         return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public UserAccount changePassword(UUID userId, ChangePasswordRequest request) {
+        UserAccount user = requireUser(userId);
+        String oldPassword = trimToNull(request.getOldPassword());
+        String newPassword = trimToNull(request.getNewPassword());
+        String confirmNewPassword = trimToNull(request.getConfirmNewPassword());
+
+        if (oldPassword == null || newPassword == null || confirmNewPassword == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Old password, new password and confirmation are required");
+        }
+
+        if (user.getPasswordHash() == null || !passwordHasher.matches(oldPassword, user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Old password is incorrect");
+        }
+
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password confirmation does not match");
+        }
+
+        if (newPassword.equals(oldPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from old password");
+        }
+
+        user.setPasswordHash(passwordHasher.hash(newPassword));
+        return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public UserAccount disableFaceLogin(UUID userId) {
+        UserAccount user = requireUser(userId);
+        user.setFaceLoginEnabled(Boolean.FALSE);
+        return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public UserAccount enableFaceLogin(UUID userId) {
+        UserAccount user = requireUser(userId);
+        if (!hasFaceEnrollment(user)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No face template exists to enable FaceID");
+        }
+
+        user.setFaceLoginEnabled(Boolean.TRUE);
+        if (user.getFaceEnrolledAt() == null) {
+            user.setFaceEnrolledAt(Instant.now());
+        }
+        return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public UserAccount deleteFaceEnrollment(UUID userId) {
+        UserAccount user = requireUser(userId);
+        fileStorageService.deleteStoredFile(user.getFaceTemplatePath());
+        clearFaceEnrollment(user);
+        return userAccountRepository.save(user);
+    }
+
+    @Transactional
+    public UserAccount replaceFaceEnrollment(UUID userId, MultipartFile faceImage) {
+        UserAccount user = requireUser(userId);
+        applyFaceEnrollment(user, faceImage, true);
+        return userAccountRepository.save(user);
+    }
+
+    public UserAccount applyFaceEnrollment(UserAccount user, MultipartFile faceImage, boolean enableFaceLogin) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        String faceSignature = faceVerificationService.generateSignature(faceImage);
+        ensureFaceIsUnique(faceSignature, user.getId());
+
+        String previousFacePath = trimToNull(user.getFaceTemplatePath());
+        String faceTemplatePath = fileStorageService.storeFaceTemplate(faceImage);
+
+        if (previousFacePath != null) {
+            fileStorageService.deleteStoredFile(previousFacePath);
+        }
+
+        user.setFaceTemplatePath(faceTemplatePath);
+        user.setFaceTemplateHash(faceSignature);
+        user.setFaceLoginEnabled(enableFaceLogin);
+        user.setFaceEnrolledAt(Instant.now());
+        return user;
     }
 
     @Transactional(readOnly = true)
@@ -105,6 +194,46 @@ public class UserAccountService {
                 user.getFaceEnrolledAt(),
                 presenceService.getPresence(user.getId())
         );
+    }
+
+    private void ensureFaceIsUnique(String candidateSignature, UUID excludedUserId) {
+        userAccountRepository.findByFaceLoginEnabledTrueAndFaceTemplateHashIsNotNull().stream()
+                .filter(existing -> excludedUserId == null || !excludedUserId.equals(existing.getId()))
+                .filter(existing -> faceVerificationService.distance(resolveStoredFaceSignature(existing), candidateSignature) <= 140)
+                .findFirst()
+                .ifPresent(conflict -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "This face is already enrolled for another account");
+                });
+    }
+
+    private String resolveStoredFaceSignature(UserAccount user) {
+        if (user == null) {
+            return null;
+        }
+
+        if (user.getFaceTemplatePath() != null && !user.getFaceTemplatePath().isBlank()) {
+            try {
+                return faceVerificationService.generateSignatureFromStoredPath(user.getFaceTemplatePath());
+            } catch (RuntimeException ex) {
+                if (user.getFaceTemplateHash() != null && !user.getFaceTemplateHash().isBlank()) {
+                    return user.getFaceTemplateHash();
+                }
+            }
+        }
+
+        return user.getFaceTemplateHash();
+    }
+
+    private void clearFaceEnrollment(UserAccount user) {
+        user.setFaceTemplatePath(null);
+        user.setFaceTemplateHash(null);
+        user.setFaceEnrolledAt(null);
+        user.setFaceLoginEnabled(Boolean.FALSE);
+    }
+
+    private boolean hasFaceEnrollment(UserAccount user) {
+        return user != null && ((user.getFaceTemplatePath() != null && !user.getFaceTemplatePath().isBlank())
+                || (user.getFaceTemplateHash() != null && !user.getFaceTemplateHash().isBlank()));
     }
 
     private String trimToNull(String value) {

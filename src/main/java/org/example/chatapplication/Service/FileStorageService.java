@@ -66,6 +66,20 @@ public class FileStorageService {
         }
     }
 
+    public void deleteStoredFile(String storedPath) {
+        if (!StringUtils.hasText(storedPath)) {
+            return;
+        }
+
+        String normalizedPath = storedPath.startsWith("/") ? storedPath.substring(1) : storedPath;
+        Path filePath = Paths.get(normalizedPath).normalize();
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to delete stored file", ex);
+        }
+    }
+
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Image file is required");

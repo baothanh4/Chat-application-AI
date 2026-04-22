@@ -46,13 +46,7 @@ public class AuthService {
     @Transactional
     public UserResponse registerWithFace(AuthRegisterRequest request, MultipartFile faceImage) {
         UserAccount user = createUser(request);
-        String faceSignature = faceVerificationService.generateSignature(faceImage);
-        ensureFaceIsUnique(faceSignature);
-        String faceTemplatePath = fileStorageService.storeFaceTemplate(faceImage);
-        user.setFaceTemplatePath(faceTemplatePath);
-        user.setFaceTemplateHash(faceSignature);
-        user.setFaceLoginEnabled(true);
-        user.setFaceEnrolledAt(Instant.now());
+        userAccountService.applyFaceEnrollment(user, faceImage, true);
 
         UserAccount saved = userAccountRepository.save(user);
         presenceService.markOnline(saved.getId());

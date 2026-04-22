@@ -60,7 +60,7 @@ public class UserAccount extends BaseEntity{
     @Column(name = "face_enrolled_at")
     private Instant faceEnrolledAt;
 
-    @Column(name = "face_login_enabled")
+    @Column(name = "face_login_enabled", nullable = false)
     private Boolean faceLoginEnabled = Boolean.FALSE;
 
     @Column(name = "last_seen_at")
@@ -70,7 +70,7 @@ public class UserAccount extends BaseEntity{
         return Boolean.TRUE.equals(faceLoginEnabled);
     }
 
-    public void setFaceLoginEnabled(boolean faceLoginEnabled) {
-        this.faceLoginEnabled = faceLoginEnabled;
+    public void setFaceLoginEnabled(Boolean faceLoginEnabled) {
+        this.faceLoginEnabled = Boolean.TRUE.equals(faceLoginEnabled);
     }
 }

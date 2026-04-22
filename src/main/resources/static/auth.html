@@ -305,6 +305,15 @@
             margin-top: 14px;
         }
 
+        .current-user-actions.compact {
+            margin-top: 10px;
+        }
+
+        .current-user-actions.compact .btn-hero-action {
+            flex: 0 1 auto;
+            min-width: 120px;
+        }
+
         .btn-hero-action {
             flex: 1;
             border: 1px solid rgba(255,255,255,0.2);
@@ -321,6 +330,58 @@
 
         .btn-hero-action:hover {
             background: rgba(255,255,255,0.2);
+        }
+
+        .current-user-edit-panel {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .profile-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .profile-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .profile-grid input,
+        .profile-grid select,
+        .profile-grid textarea {
+            width: 100%;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(15, 23, 42, 0.45);
+            color: var(--text-primary);
+            padding: 11px 12px;
+            font: inherit;
+        }
+
+        .profile-grid textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+
+        .current-face-status {
+            margin-bottom: 12px;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+        }
+
+        .compact-face-section .camera-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .compact-face-section .camera-container,
+        .compact-face-section .preview-container {
+            min-height: 0;
+        }
+
+        .compact-face-section video,
+        .compact-face-section img {
+            min-height: 150px;
         }
 
         /* ====== RIGHT AUTH PANEL ====== */
@@ -1513,6 +1574,111 @@
                         <button class="btn-hero-action" id="copyUserIdBtn" type="button">📋 Copy ID</button>
                         <button class="btn-hero-action" id="logoutBtn" type="button">🚪 Đăng xuất</button>
                     </div>
+
+                    <div class="current-user-edit-panel">
+                        <div class="form-section-title">Cập nhật profile</div>
+                        <div class="form-grid profile-grid">
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input id="profileEditDisplayName" type="text" placeholder="Tên hiển thị" />
+                            </div>
+                            <div class="form-group">
+                                <label>Họ và tên đầy đủ</label>
+                                <input id="profileEditFullName" type="text" placeholder="Họ và tên" />
+                            </div>
+                            <div class="form-group">
+                                <label>Số điện thoại</label>
+                                <input id="profileEditPhoneNumber" type="text" placeholder="Số điện thoại" />
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input id="profileEditEmail" type="email" placeholder="Email" />
+                            </div>
+                            <div class="form-group">
+                                <label>Ngày sinh</label>
+                                <input id="profileEditDateOfBirth" type="date" />
+                            </div>
+                            <div class="form-group">
+                                <label>Giới tính</label>
+                                <select id="profileEditGender">
+                                    <option value="">-- Chọn --</option>
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nữ">Nữ</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Địa chỉ</label>
+                                <input id="profileEditAddress" type="text" placeholder="Địa chỉ" />
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Giới thiệu</label>
+                                <textarea id="profileEditBio" placeholder="Giới thiệu ngắn"></textarea>
+                            </div>
+                        </div>
+                        <div class="current-user-actions compact">
+                            <button class="btn-hero-action" id="saveProfileBtn" type="button">💾 Lưu profile</button>
+                        </div>
+                        <div class="msg" id="profileUpdateMessage"></div>
+                    </div>
+
+                    <div class="current-user-edit-panel">
+                        <div class="form-section-title">Đổi mật khẩu</div>
+                        <div class="form-grid profile-grid">
+                            <div class="form-group">
+                                <label>Mật khẩu cũ</label>
+                                <input id="changeOldPassword" type="password" placeholder="Nhập mật khẩu cũ" />
+                            </div>
+                            <div class="form-group">
+                                <label>Mật khẩu mới</label>
+                                <input id="changeNewPassword" type="password" placeholder="Nhập mật khẩu mới" />
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Xác nhận mật khẩu mới</label>
+                                <input id="changeConfirmPassword" type="password" placeholder="Nhập lại mật khẩu mới" />
+                            </div>
+                        </div>
+                        <div class="current-user-actions compact">
+                            <button class="btn-hero-action" id="changePasswordBtn" type="button">🔐 Đổi mật khẩu</button>
+                        </div>
+                        <div class="msg" id="changePasswordMessage"></div>
+                    </div>
+
+                    <div class="current-user-edit-panel">
+                        <div class="form-section-title">FaceID</div>
+                        <div class="current-face-status" id="profileFaceStatusText">Chưa có dữ liệu FaceID.</div>
+                        <div class="face-scan-section compact-face-section">
+                            <div class="camera-grid">
+                                <div class="camera-container">
+                                    <video id="profileFaceVideo" autoplay playsinline muted></video>
+                                    <canvas id="profileFaceCanvas" style="display:none;"></canvas>
+                                    <div class="face-overlay" id="profileFaceOverlay">
+                                        <div class="scan-line"></div>
+                                        <div class="face-frame"></div>
+                                        <div class="corner tl"></div>
+                                        <div class="corner tr"></div>
+                                        <div class="corner bl"></div>
+                                        <div class="corner br"></div>
+                                    </div>
+                                    <div class="camera-btns">
+                                        <button class="btn-secondary" id="startProfileFaceBtn" type="button">📹 Bật camera</button>
+                                        <button class="btn-secondary" id="captureProfileFaceBtn" type="button">📸 Cập nhật FaceID</button>
+                                    </div>
+                                    <div class="camera-hint">Chỉ cần đưa mặt vào khung rồi bấm cập nhật để thay FaceID hiện tại.</div>
+                                </div>
+                                <div class="preview-container">
+                                    <img id="profileFacePreview" alt="Preview FaceID hiện tại" />
+                                    <div class="camera-hint">FaceID mới sẽ bật đăng nhập bằng khuôn mặt ngay sau khi lưu.</div>
+                                    <div class="msg" id="profileFaceMessage"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="current-user-actions compact">
+                            <button class="btn-hero-action" id="enableFaceBtn" type="button">▶️ Bật FaceID</button>
+                            <button class="btn-hero-action" id="disableFaceBtn" type="button">⏸️ Tắt FaceID</button>
+                            <button class="btn-hero-action" id="deleteFaceBtn" type="button">🗑️ Xóa FaceID</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1825,6 +1991,32 @@
     const profileId = $('profileId');
     const copyUserIdBtn = $('copyUserIdBtn');
     const logoutBtn = $('logoutBtn');
+    const profileEditDisplayName = $('profileEditDisplayName');
+    const profileEditFullName = $('profileEditFullName');
+    const profileEditPhoneNumber = $('profileEditPhoneNumber');
+    const profileEditAddress = $('profileEditAddress');
+    const profileEditBio = $('profileEditBio');
+    const profileEditDateOfBirth = $('profileEditDateOfBirth');
+    const profileEditGender = $('profileEditGender');
+    const profileEditEmail = $('profileEditEmail');
+    const saveProfileBtn = $('saveProfileBtn');
+    const profileUpdateMessage = $('profileUpdateMessage');
+    const changeOldPassword = $('changeOldPassword');
+    const changeNewPassword = $('changeNewPassword');
+    const changeConfirmPassword = $('changeConfirmPassword');
+    const changePasswordBtn = $('changePasswordBtn');
+    const changePasswordMessage = $('changePasswordMessage');
+    const profileFaceStatusText = $('profileFaceStatusText');
+    const profileFaceVideo = $('profileFaceVideo');
+    const profileFaceCanvas = $('profileFaceCanvas');
+    const profileFacePreview = $('profileFacePreview');
+    const profileFaceOverlay = $('profileFaceOverlay');
+    const startProfileFaceBtn = $('startProfileFaceBtn');
+    const captureProfileFaceBtn = $('captureProfileFaceBtn');
+    const profileFaceMessage = $('profileFaceMessage');
+    const enableFaceBtn = $('enableFaceBtn');
+    const disableFaceBtn = $('disableFaceBtn');
+    const deleteFaceBtn = $('deleteFaceBtn');
     const friendHub = $('friendHub');
     const friendSearchInput = $('friendSearchInput');
     const friendSearchResults = $('friendSearchResults');
@@ -1879,6 +2071,8 @@
     let friendSearchTimer = null;
     let friendSearchItems = [];
     let faceLoginPendingBlob = null;
+    let profileFaceStream = null;
+    let profileFaceBlob = null;
     let inboxItems = [];
     let inboxPollTimer = null;
     let aiInsightCache = new Map();
@@ -2103,6 +2297,9 @@
             friendHub.classList.remove('visible');
             messageInbox.classList.remove('visible');
             aiInsights.classList.remove('visible');
+            if (profileUpdateMessage) clearMessage(profileUpdateMessage);
+            if (changePasswordMessage) clearMessage(changePasswordMessage);
+            if (profileFaceMessage) clearMessage(profileFaceMessage);
             return;
         }
         currentUserBox.classList.add('visible');
@@ -2112,6 +2309,153 @@
         profileUsername.textContent = user.username || '';
         profileDisplayName.textContent = user.displayName || '';
         profileId.textContent = user.id || '';
+        profileEditDisplayName.value = user.displayName || '';
+        profileEditFullName.value = user.fullName || '';
+        profileEditPhoneNumber.value = user.phoneNumber || '';
+        profileEditAddress.value = user.address || '';
+        profileEditBio.value = user.bio || '';
+        profileEditDateOfBirth.value = user.dateOfBirth || '';
+        profileEditGender.value = user.gender || '';
+        profileEditEmail.value = user.email || '';
+        profileFaceStatusText.textContent = user.faceTemplatePath
+            ? `FaceID: ${user.faceLoginEnabled ? 'đang bật' : 'đang tắt'} · template đã lưu`
+            : 'FaceID: chưa đăng ký';
+        enableFaceBtn.disabled = !user.faceTemplatePath || user.faceLoginEnabled;
+        disableFaceBtn.disabled = !user.faceTemplatePath;
+        deleteFaceBtn.disabled = !user.faceTemplatePath;
+    }
+
+    function getLoggedInUser() {
+        const user = getCurrentUser();
+        if (!user?.id) {
+            throw new Error('Bạn cần đăng nhập trước.');
+        }
+        return user;
+    }
+
+    async function syncCurrentUserFromApi(userId) {
+        const user = await fetchJson(`/api/users/${encodeURIComponent(userId)}`);
+        saveCurrentUser(user);
+        return user;
+    }
+
+    async function updateProfileFromForm() {
+        const user = getLoggedInUser();
+        setMessage(profileUpdateMessage, 'success', 'Đang lưu profile...');
+
+        const payload = {
+            displayName: profileEditDisplayName.value.trim(),
+            fullName: profileEditFullName.value.trim(),
+            phoneNumber: profileEditPhoneNumber.value.trim(),
+            address: profileEditAddress.value.trim(),
+            bio: profileEditBio.value.trim(),
+            dateOfBirth: profileEditDateOfBirth.value,
+            gender: profileEditGender.value,
+            email: profileEditEmail.value.trim()
+        };
+
+        const updated = await fetchJson(`/api/users/${encodeURIComponent(user.id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        saveCurrentUser(updated);
+        setMessage(profileUpdateMessage, 'success', '✅ Đã cập nhật profile.');
+    }
+
+    async function changePasswordFromForm() {
+        const user = getLoggedInUser();
+        const payload = {
+            oldPassword: changeOldPassword.value,
+            newPassword: changeNewPassword.value,
+            confirmNewPassword: changeConfirmPassword.value
+        };
+
+        setMessage(changePasswordMessage, 'success', 'Đang đổi mật khẩu...');
+        const updated = await fetchJson(`/api/users/${encodeURIComponent(user.id)}/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        saveCurrentUser(updated);
+        changeOldPassword.value = '';
+        changeNewPassword.value = '';
+        changeConfirmPassword.value = '';
+        setMessage(changePasswordMessage, 'success', '✅ Đã đổi mật khẩu thành công.');
+    }
+
+    async function disableFaceLoginForProfile() {
+        const user = getLoggedInUser();
+        setMessage(profileFaceMessage, 'success', 'Đang tắt FaceID...');
+        const updated = await fetchJson(`/api/users/${encodeURIComponent(user.id)}/face/disable`, { method: 'PUT' });
+        saveCurrentUser(updated);
+        setMessage(profileFaceMessage, 'success', '✅ Đã tắt FaceID.');
+    }
+
+    async function enableFaceLoginForProfile() {
+        const user = getLoggedInUser();
+        setMessage(profileFaceMessage, 'success', 'Đang bật FaceID...');
+        const updated = await fetchJson(`/api/users/${encodeURIComponent(user.id)}/face/enable`, { method: 'PUT' });
+        saveCurrentUser(updated);
+        setMessage(profileFaceMessage, 'success', '✅ Đã bật FaceID.');
+    }
+
+    async function deleteFaceEnrollmentForProfile() {
+        const user = getLoggedInUser();
+        setMessage(profileFaceMessage, 'success', 'Đang xoá FaceID...');
+        const updated = await fetchJson(`/api/users/${encodeURIComponent(user.id)}/face`, { method: 'DELETE' });
+        saveCurrentUser(updated);
+        profileFacePreview.removeAttribute('src');
+        profileFaceBlob = null;
+        setMessage(profileFaceMessage, 'success', '🗑️ Đã xoá FaceID.');
+    }
+
+    async function startProfileFaceCamera() {
+        try {
+            stopStream(profileFaceStream);
+            profileFaceStream = await startCamera(profileFaceVideo);
+            profileFaceOverlay.classList.add('active');
+            setMessage(profileFaceMessage, 'success', 'Camera sẵn sàng — hãy chụp FaceID mới.');
+            startProfileFaceBtn.textContent = '🔄 Bật lại';
+        } catch (err) {
+            setMessage(profileFaceMessage, 'error', err.message || 'Không thể bật camera.');
+        }
+    }
+
+    async function captureAndSaveProfileFace() {
+        const user = getLoggedInUser();
+        try {
+            const faceBox = await detectFaceBox(profileFaceVideo);
+            if (faceBox) {
+                profileFaceBlob = await captureFaceFromBox(profileFaceVideo, profileFaceCanvas, faceBox);
+            } else {
+                profileFaceBlob = await captureFrame(profileFaceVideo, profileFaceCanvas);
+            }
+
+            setPreview(profileFacePreview, profileFaceBlob);
+            const payload = new FormData();
+            payload.append('faceImage', profileFaceBlob, 'profile-face.jpg');
+
+            setMessage(profileFaceMessage, 'success', 'Đang cập nhật FaceID...');
+            const res = await fetch(`/api/users/${encodeURIComponent(user.id)}/face`, {
+                method: 'POST',
+                body: payload
+            });
+            const { text, json } = await readResponseBody(res);
+            if (!res.ok) {
+                throw new Error((json && json.message) || text || 'Cập nhật FaceID thất bại.');
+            }
+
+            saveCurrentUser(json || JSON.parse(text));
+            setMessage(profileFaceMessage, 'success', '🎉 Đã cập nhật FaceID thành công.');
+            stopStream(profileFaceStream);
+            profileFaceStream = null;
+            profileFaceOverlay.classList.remove('active');
+        } catch (err) {
+            setMessage(profileFaceMessage, 'error', err.message || 'Không thể cập nhật FaceID.');
+        }
     }
 
     function renderAiConversationOptions() {
@@ -2972,6 +3316,10 @@
         aiInsightCache.clear();
         selectedAiConversationId = null;
         renderAiInsightEmpty();
+        stopStream(profileFaceStream);
+        profileFaceStream = null;
+        profileFaceBlob = null;
+        profileFacePreview.removeAttribute('src');
     });
 
     messageInboxList.addEventListener('click', (e) => {
@@ -2994,11 +3342,49 @@
     refreshFriendHubBtn.addEventListener('click', refreshFriendHub);
     aiConversationSelect.addEventListener('change', (e) => loadAiInsight(e.target.value));
     refreshAiBtn.addEventListener('click', () => refreshAiInsight(aiConversationSelect.value || selectedAiConversationId));
+    saveProfileBtn.addEventListener('click', async () => {
+        try {
+            await updateProfileFromForm();
+        } catch (err) {
+            setMessage(profileUpdateMessage, 'error', err.message || 'Không thể cập nhật profile.');
+        }
+    });
+    changePasswordBtn.addEventListener('click', async () => {
+        try {
+            await changePasswordFromForm();
+        } catch (err) {
+            setMessage(changePasswordMessage, 'error', err.message || 'Không thể đổi mật khẩu.');
+        }
+    });
+    disableFaceBtn.addEventListener('click', async () => {
+        try {
+            await disableFaceLoginForProfile();
+        } catch (err) {
+            setMessage(profileFaceMessage, 'error', err.message || 'Không thể tắt FaceID.');
+        }
+    });
+    enableFaceBtn.addEventListener('click', async () => {
+        try {
+            await enableFaceLoginForProfile();
+        } catch (err) {
+            setMessage(profileFaceMessage, 'error', err.message || 'Không thể bật FaceID.');
+        }
+    });
+    deleteFaceBtn.addEventListener('click', async () => {
+        try {
+            await deleteFaceEnrollmentForProfile();
+        } catch (err) {
+            setMessage(profileFaceMessage, 'error', err.message || 'Không thể xoá FaceID.');
+        }
+    });
+    startProfileFaceBtn.addEventListener('click', startProfileFaceCamera);
+    captureProfileFaceBtn.addEventListener('click', captureAndSaveProfileFace);
 
     /* ====== CLEANUP ====== */
     window.addEventListener('beforeunload', () => {
         stopStream(registrationStream);
         stopStream(loginStream);
+        stopStream(profileFaceStream);
     });
 
     /* ====== INIT ====== */
