@@ -16,6 +16,7 @@ import java.util.UUID;
 public class FileStorageService {
     private static final Path AVATAR_DIR = Paths.get("uploads", "avatars");
     private static final Path CHAT_IMAGE_DIR = Paths.get("uploads", "chat-images");
+    private static final Path CHAT_VIDEO_DIR = Paths.get("uploads", "chat-videos");
     private static final Path FACE_TEMPLATE_DIR = Paths.get("uploads", "face-templates");
 
     public String storeAvatar(MultipartFile file) {
@@ -47,6 +48,22 @@ public class FileStorageService {
             return "/uploads/chat-images/" + filename;
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to store chat image file", ex);
+        }
+    }
+
+    public String storeChatVideo(MultipartFile file) {
+        validateVideo(file);
+        try {
+            Files.createDirectories(CHAT_VIDEO_DIR);
+            String extension = getExtension(file.getOriginalFilename());
+            String filename = UUID.randomUUID() + extension;
+            Path target = CHAT_VIDEO_DIR.resolve(filename).normalize();
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, target);
+            }
+            return "/uploads/chat-videos/" + filename;
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to store chat video file", ex);
         }
     }
 
@@ -85,9 +102,38 @@ public class FileStorageService {
             throw new IllegalArgumentException("Image file is required");
         }
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new IllegalArgumentException("Only image files are allowed");
+        if (isAllowedContentType(contentType, "image/") || hasAllowedExtension(file, ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif", ".jfif")) {
+            return;
         }
+        throw new IllegalArgumentException("Only image files are allowed");
+    }
+
+    private void validateVideo(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Video file is required");
+        }
+        String contentType = file.getContentType();
+        if (isAllowedContentType(contentType, "video/") || hasAllowedExtension(file, ".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v")) {
+            return;
+        }
+        throw new IllegalArgumentException("Only video files are allowed");
+    }
+
+    private boolean isAllowedContentType(String contentType, String prefix) {
+        return contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith(prefix);
+    }
+
+    private boolean hasAllowedExtension(MultipartFile file, String... extensions) {
+        String extension = getExtension(file.getOriginalFilename());
+        if (!StringUtils.hasText(extension)) {
+            return false;
+        }
+        for (String allowed : extensions) {
+            if (allowed.equalsIgnoreCase(extension)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String getExtension(String originalFilename) {

@@ -24,6 +24,9 @@ public class CreateGroupConversationRequest {
     @Size(max = 255)
     String description;
 
+    @Size(max = 500)
+    String avatarPath;
+
     @NotEmpty
     Set<UUID> memberIds;
 }

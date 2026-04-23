@@ -28,6 +28,9 @@ public class Conversation extends BaseEntity {
     @Column(nullable = false)
     private boolean archived = false;
 
+    @Column(length = 500)
+    private String avatarPath;
+
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @ToString.Exclude
     private Set<ConversationMember> members = new LinkedHashSet<>();

@@ -19,6 +19,7 @@ public class ConversationResponse {
     String name;
     String description;
     boolean archived;
+    String avatarPath;
     Set<UserResponse> members;
     Instant createdAt;
     Instant updatedAt;

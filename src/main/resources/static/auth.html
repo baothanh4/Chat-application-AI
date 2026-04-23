@@ -1976,6 +1976,8 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script>
     /* ====== DOM REFERENCES ====== */
     const $ = id => document.getElementById(id);
@@ -2074,7 +2076,11 @@
     let profileFaceStream = null;
     let profileFaceBlob = null;
     let inboxItems = [];
-    let inboxPollTimer = null;
+    let inboxSocket = null;
+    let inboxStompClient = null;
+    let inboxStompSubscription = null;
+    let inboxAiSubscription = null;
+    let inboxRealtimeUserId = null;
     let aiInsightCache = new Map();
     let selectedAiConversationId = null;
 
@@ -2187,10 +2193,18 @@
         if (!item.latestMessage) return 'Chưa có tin nhắn nào.';
         const sender = item.latestMessage.sender || item.latestSender || {};
         const prefix = String(sender.id || '') === String(currentUserId) ? 'Bạn: ' : `${sender.displayName || sender.username || 'Ai đó'}: `;
+        const messageType = String(item.latestMessage.messageType || 'TEXT').toUpperCase();
+        if (messageType === 'IMAGE') {
+            return prefix + '[Hình ảnh]';
+        }
+        if (messageType === 'VIDEO') {
+            return prefix + '[Video]';
+        }
         return prefix + (item.latestMessage.content || '');
     }
 
-    function renderInbox(items) {
+    function renderInbox(items, options = {}) {
+        const refreshInsight = options.refreshInsight !== false;
         inboxItems = items || [];
         const currentUser = getCurrentUser();
         if (!currentUser?.id) {
@@ -2207,6 +2221,7 @@
             return;
         }
 
+        const previousSelectedConversationId = selectedAiConversationId;
         messageInboxList.innerHTML = inboxItems.map(item => {
             const unreadCount = Number(item.unreadCount || 0);
             const title = escapeHtml(getInboxTitle(item, currentUser.id));
@@ -2236,9 +2251,10 @@
         if (!selectedAiConversationId || !inboxItems.some(item => String(item.conversationId) === String(selectedAiConversationId))) {
             selectedAiConversationId = inboxItems[0]?.conversationId || null;
         }
-        if (selectedAiConversationId) {
+        const selectedConversationChanged = String(previousSelectedConversationId || '') !== String(selectedAiConversationId || '');
+        if (selectedAiConversationId && (refreshInsight || selectedConversationChanged)) {
             loadAiInsight(selectedAiConversationId);
-        } else {
+        } else if (!selectedAiConversationId) {
             renderAiInsightEmpty();
         }
     }
@@ -2252,7 +2268,7 @@
 
         try {
             const items = await fetchJson(`/api/conversations/users/${encodeURIComponent(currentUser.id)}/inbox`);
-            renderInbox(items || []);
+            renderInbox(items || [], { refreshInsight: true });
         } catch (err) {
             messageInboxList.innerHTML = '<div class="message-inbox-empty">Không thể tải hộp thư tin nhắn.</div>';
         }
@@ -2261,14 +2277,95 @@
     function startInboxPolling() {
         const currentUser = getCurrentUser();
         if (!currentUser?.id) return;
-        if (inboxPollTimer) return;
-        inboxPollTimer = setInterval(loadInboxSummary, 5000);
+        if (inboxRealtimeUserId === currentUser.id && inboxStompClient?.connected) return;
+        disconnectInboxRealtime();
+
+        if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
+            console.warn('SockJS/STOMP is not available. Inbox will use manual refresh only.');
+            return;
+        }
+
+        inboxSocket = new SockJS('/ws');
+        inboxStompClient = Stomp.over(inboxSocket);
+        inboxStompClient.debug = null;
+        inboxStompClient.connect({}, () => {
+            const userId = getCurrentUser()?.id;
+            if (!userId) {
+                disconnectInboxRealtime();
+                return;
+            }
+            inboxRealtimeUserId = userId;
+            if (inboxStompSubscription) {
+                try { inboxStompSubscription.unsubscribe(); } catch (e) {}
+            }
+            inboxStompSubscription = inboxStompClient.subscribe(`/topic/users/${userId}/inbox`, (frame) => {
+                try {
+                    const incoming = JSON.parse(frame.body);
+                    upsertInboxItem(incoming);
+                } catch (err) {
+                    console.warn('Invalid inbox update payload', err);
+                }
+            });
+            inboxAiSubscription = inboxStompClient.subscribe(`/topic/users/${userId}/ai`, (frame) => {
+                try {
+                    const insight = JSON.parse(frame.body);
+                    if (insight?.conversationId) {
+                        aiInsightCache.set(String(insight.conversationId), insight);
+                        if (String(selectedAiConversationId || '') === String(insight.conversationId)) {
+                            renderAiInsight(insight);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Invalid AI update payload', err);
+                }
+            });
+        }, (error) => {
+            console.warn('Inbox websocket connection failed', error);
+            disconnectInboxRealtime();
+        });
     }
 
     function stopInboxPolling() {
-        if (!inboxPollTimer) return;
-        clearInterval(inboxPollTimer);
-        inboxPollTimer = null;
+        disconnectInboxRealtime();
+    }
+
+    function disconnectInboxRealtime() {
+        if (inboxStompSubscription) {
+            try {
+                inboxStompSubscription.unsubscribe();
+            } catch (e) {}
+            inboxStompSubscription = null;
+        }
+        if (inboxAiSubscription) {
+            try {
+                inboxAiSubscription.unsubscribe();
+            } catch (e) {}
+            inboxAiSubscription = null;
+        }
+        if (inboxStompClient) {
+            try {
+                inboxStompClient.disconnect(() => {});
+            } catch (e) {}
+            inboxStompClient = null;
+        }
+        inboxSocket = null;
+        inboxRealtimeUserId = null;
+    }
+
+    function upsertInboxItem(incoming) {
+        if (!incoming?.conversationId) return;
+        const index = inboxItems.findIndex(item => String(item.conversationId) === String(incoming.conversationId));
+        if (index >= 0) {
+            inboxItems[index] = { ...inboxItems[index], ...incoming };
+        } else {
+            inboxItems.unshift(incoming);
+        }
+        inboxItems.sort((a, b) => {
+            const left = new Date(a.latestMessageAt || a.updatedAt || a.createdAt || 0).getTime();
+            const right = new Date(b.latestMessageAt || b.updatedAt || b.createdAt || 0).getTime();
+            return right - left;
+        });
+        renderInbox(inboxItems, { refreshInsight: false });
     }
 
     function saveCurrentUser(user) {
@@ -2297,6 +2394,7 @@
             friendHub.classList.remove('visible');
             messageInbox.classList.remove('visible');
             aiInsights.classList.remove('visible');
+            disconnectInboxRealtime();
             if (profileUpdateMessage) clearMessage(profileUpdateMessage);
             if (changePasswordMessage) clearMessage(changePasswordMessage);
             if (profileFaceMessage) clearMessage(profileFaceMessage);

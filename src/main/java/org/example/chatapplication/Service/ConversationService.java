@@ -84,6 +84,7 @@ public class ConversationService {
         conversation.setType(ConversationType.GROUP);
         conversation.setName(request.getName().trim());
         conversation.setDescription(request.getDescription());
+        conversation.setAvatarPath(request.getAvatarPath());
         conversation = conversationRepository.save(conversation);
 
         for (UUID memberId : memberIds) {
@@ -125,36 +126,42 @@ public class ConversationService {
                 conversation.getName(),
                 conversation.getDescription(),
                 conversation.isArchived(),
+                conversation.getAvatarPath(),
                 members,
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt()
         );
     }
 
-    private Map<String, Object> buildInboxItem(Conversation conversation, UUID viewerId) {
+    public Map<String, Object> buildInboxItem(Conversation conversation, UUID viewerId) {
+        return buildInboxItem(conversation, viewerId, conversationMemberRepository.findByConversationId(conversation.getId()));
+    }
+
+    public Map<String, Object> buildInboxItem(Conversation conversation, UUID viewerId, List<ConversationMember> members) {
         Map<String, Object> item = new LinkedHashMap<>();
 
-        List<Map<String, Object>> members = new ArrayList<>();
-        for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
-            members.add(buildUserMap(member.getUser()));
+        List<Map<String, Object>> memberSummaries = new ArrayList<>();
+        for (ConversationMember member : members) {
+            memberSummaries.add(buildUserMap(member.getUser()));
         }
 
         ChatMessage latestMessageEntity = chatMessageRepository.findTopByConversationIdOrderByCreatedAtDesc(conversation.getId());
         Map<String, Object> latestMessage = latestMessageEntity == null ? null : buildMessageMap(latestMessageEntity);
 
-        ConversationMember viewerMember = conversationMemberRepository.findByConversationIdAndUserId(conversation.getId(), viewerId).orElse(null);
+        ConversationMember viewerMember = members.stream()
+                .filter(member -> member.getUser().getId().equals(viewerId))
+                .findFirst()
+                .orElse(null);
         Instant lastReadAt = viewerMember == null ? null : viewerMember.getLastReadAt();
-        long unreadCount = chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversation.getId(), Pageable.unpaged()).stream()
-                .filter(message -> !message.getSender().getId().equals(viewerId))
-                .filter(message -> lastReadAt == null || message.getCreatedAt().isAfter(lastReadAt))
-                .count();
+        long unreadCount = countUnreadMessages(conversation.getId(), viewerId, lastReadAt);
 
         item.put("conversationId", conversation.getId());
         item.put("conversationType", conversation.getType());
         item.put("name", conversation.getName());
         item.put("description", conversation.getDescription());
         item.put("archived", conversation.isArchived());
-        item.put("members", members);
+        item.put("avatarPath", conversation.getAvatarPath());
+        item.put("members", memberSummaries);
         item.put("latestMessage", latestMessage);
         item.put("latestSender", latestMessageEntity == null ? null : buildUserMap(latestMessageEntity.getSender()));
         item.put("latestMessageAt", latestMessageEntity == null ? null : latestMessageEntity.getCreatedAt());
@@ -162,6 +169,13 @@ public class ConversationService {
         item.put("createdAt", conversation.getCreatedAt());
         item.put("updatedAt", conversation.getUpdatedAt());
         return item;
+    }
+
+    private long countUnreadMessages(UUID conversationId, UUID viewerId, Instant lastReadAt) {
+        if (lastReadAt == null) {
+            return chatMessageRepository.countByConversationIdAndSender_IdNot(conversationId, viewerId);
+        }
+        return chatMessageRepository.countByConversationIdAndSender_IdNotAndCreatedAtAfter(conversationId, viewerId, lastReadAt);
     }
 
     private Map<String, Object> buildUserMap(UserAccount user) {

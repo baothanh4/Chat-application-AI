@@ -29,5 +29,11 @@ public class UploadController {
         String url = fileStorageService.storeChatImage(file);
         return ResponseEntity.status(HttpStatus.CREATED).body(new FileUploadResponse(url));
     }
+
+    @PostMapping("/chat-video")
+    ResponseEntity<FileUploadResponse> uploadChatVideo(@RequestParam("file") MultipartFile file) {
+        String url = fileStorageService.storeChatVideo(file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new FileUploadResponse(url));
+    }
 }
 

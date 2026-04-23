@@ -21,9 +21,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,6 +31,7 @@ public class ChatMessageDeliveryListener {
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationRepository conversationRepository;
     private final ConversationMemberRepository conversationMemberRepository;
+    private final ConversationService conversationService;
     private final PresenceService presenceService;
     private final NotificationService notificationService;
     private final ConversationAiService conversationAiService;
@@ -47,9 +46,10 @@ public class ChatMessageDeliveryListener {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found: " + event.messageId()));
         Conversation conversation = conversationRepository.findById(event.conversationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found: " + event.conversationId()));
+        List<ConversationMember> members = conversationMemberRepository.findByConversationId(conversation.getId());
 
         boolean atLeastOneRecipientOnline = false;
-        for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
+        for (ConversationMember member : members) {
             if (member.getUser().getId().equals(event.senderId())) {
                 continue;
             }
@@ -69,8 +69,8 @@ public class ChatMessageDeliveryListener {
             chatMessageRepository.save(message);
         }
 
-        for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
-            Map<String, Object> summary = buildInboxSummary(conversation, member.getUser().getId());
+        for (ConversationMember member : members) {
+            var summary = conversationService.buildInboxItem(conversation, member.getUser().getId(), members);
             messagingTemplate.convertAndSend("/topic/users/" + member.getUser().getId() + "/inbox", (Object) summary);
         }
 
@@ -78,7 +78,7 @@ public class ChatMessageDeliveryListener {
             ConversationAiInsightResponse insight = conversationAiService.refreshConversationInsight(conversation.getId());
             messagingTemplate.convertAndSend("/topic/conversations/" + conversation.getId() + "/ai", insight);
 
-            for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
+            for (ConversationMember member : members) {
                 messagingTemplate.convertAndSend("/topic/users/" + member.getUser().getId() + "/ai", insight);
             }
         } catch (Exception ex) {
@@ -89,8 +89,7 @@ public class ChatMessageDeliveryListener {
         try {
             UUID botId = aiBotService.getBotUserId();
             if (botId != null && !event.senderId().equals(botId)) {
-                boolean botIsMember = conversationMemberRepository.findByConversationId(conversation.getId())
-                        .stream()
+                boolean botIsMember = members.stream()
                         .anyMatch(m -> botId.equals(m.getUser().getId()));
 
                 if (botIsMember) {
@@ -100,8 +99,7 @@ public class ChatMessageDeliveryListener {
                     // Tạo message từ bot
                     ChatMessage botMessage = new ChatMessage();
                     botMessage.setConversation(conversation);
-                    botMessage.setSender(conversationMemberRepository.findByConversationId(conversation.getId())
-                            .stream()
+                    botMessage.setSender(members.stream()
                             .filter(m -> botId.equals(m.getUser().getId()))
                             .findFirst()
                             .map(org.example.chatapplication.Model.Entity.ConversationMember::getUser)
@@ -113,13 +111,13 @@ public class ChatMessageDeliveryListener {
                     ChatMessage savedBot = chatMessageRepository.save(botMessage);
 
                     // Map sang response DTO thủ công
-                    Map<String, Object> botSender = new LinkedHashMap<>();
+                    java.util.Map<String, Object> botSender = new java.util.LinkedHashMap<>();
                     botSender.put("id", savedBot.getSender().getId());
                     botSender.put("username", savedBot.getSender().getUsername());
                     botSender.put("displayName", savedBot.getSender().getDisplayName());
                     botSender.put("avatarPath", savedBot.getSender().getAvatarPath());
 
-                    Map<String, Object> botMsgMap = new LinkedHashMap<>();
+                    java.util.Map<String, Object> botMsgMap = new java.util.LinkedHashMap<>();
                     botMsgMap.put("id", savedBot.getId());
                     botMsgMap.put("conversationId", conversation.getId());
                     botMsgMap.put("sender", botSender);
@@ -135,8 +133,8 @@ public class ChatMessageDeliveryListener {
                     messagingTemplate.convertAndSend("/topic/conversations/" + conversation.getId(), (Object) botMsgMap);
 
                     // Cập nhật inbox cho tất cả members
-                    for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
-                        Map<String, Object> summary = buildInboxSummary(conversation, member.getUser().getId());
+                    for (ConversationMember member : members) {
+                        java.util.Map<String, Object> summary = conversationService.buildInboxItem(conversation, member.getUser().getId(), members);
                         messagingTemplate.convertAndSend("/topic/users/" + member.getUser().getId() + "/inbox", (Object) summary);
                     }
                 }
@@ -146,61 +144,5 @@ public class ChatMessageDeliveryListener {
         }
 
         log.debug("Message {} processed for conversation {}", message.getId(), conversation.getId());
-    }
-
-    private Map<String, Object> buildInboxSummary(Conversation conversation, UUID viewerId) {
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("conversationId", conversation.getId());
-        summary.put("conversationType", conversation.getType());
-        summary.put("name", conversation.getName());
-        summary.put("description", conversation.getDescription());
-        summary.put("archived", conversation.isArchived());
-
-        List<Map<String, Object>> members = conversationMemberRepository.findByConversationId(conversation.getId()).stream()
-                .map(member -> userSummary(member.getUser()))
-                .toList();
-        summary.put("members", members);
-
-        ChatMessage latestMessageEntity = chatMessageRepository.findTopByConversationIdOrderByCreatedAtDesc(conversation.getId());
-        Map<String, Object> latestMessage = latestMessageEntity == null ? null : messageSummary(latestMessageEntity);
-        summary.put("latestMessage", latestMessage);
-        summary.put("latestSender", latestMessageEntity == null ? null : userSummary(latestMessageEntity.getSender()));
-        summary.put("latestMessageAt", latestMessageEntity == null ? null : latestMessageEntity.getCreatedAt());
-
-        ConversationMember viewerMember = conversationMemberRepository.findByConversationIdAndUserId(conversation.getId(), viewerId).orElse(null);
-        Instant lastReadAt = viewerMember == null ? null : viewerMember.getLastReadAt();
-        long unreadCount = chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversation.getId(), org.springframework.data.domain.Pageable.unpaged()).stream()
-                .filter(message -> !message.getSender().getId().equals(viewerId))
-                .filter(message -> lastReadAt == null || message.getCreatedAt().isAfter(lastReadAt))
-                .count();
-
-        summary.put("unreadCount", unreadCount);
-        summary.put("createdAt", conversation.getCreatedAt());
-        summary.put("updatedAt", conversation.getUpdatedAt());
-        return summary;
-    }
-
-    private Map<String, Object> userSummary(org.example.chatapplication.Model.Entity.UserAccount user) {
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("id", user.getId());
-        summary.put("username", user.getUsername());
-        summary.put("displayName", user.getDisplayName());
-        summary.put("avatarPath", user.getAvatarPath());
-        return summary;
-    }
-
-    private Map<String, Object> messageSummary(ChatMessage message) {
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("id", message.getId());
-        summary.put("conversationId", message.getConversation().getId());
-        summary.put("sender", userSummary(message.getSender()));
-        summary.put("messageType", message.getMessageType());
-        summary.put("status", message.getStatus());
-        summary.put("content", message.getContent());
-        summary.put("clientMessageId", message.getClientMessageId());
-        summary.put("createdAt", message.getCreatedAt());
-        summary.put("deliveredAt", message.getDeliveredAt());
-        summary.put("readAt", message.getReadAt());
-        return summary;
     }
 }

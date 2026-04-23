@@ -6,8 +6,8 @@ import org.example.chatapplication.Model.Entity.ChatMessage;
 import org.example.chatapplication.Model.Entity.Conversation;
 import org.example.chatapplication.Model.Entity.DeviceToken;
 import org.example.chatapplication.Model.Entity.UserAccount;
+import org.example.chatapplication.Model.Enum.MessageType;
 import org.example.chatapplication.Repository.DeviceTokenRepository;
-import org.example.chatapplication.Service.UserAccountService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,11 +17,13 @@ import java.util.List;
 @Slf4j
 public class NotificationService {
     private final DeviceTokenRepository deviceTokenRepository;
-    private final UserAccountService userAccountService;
 
     public void sendOfflineMessageNotification(UserAccount recipient, ChatMessage message, Conversation conversation) {
         List<DeviceToken> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(recipient.getId());
-        String payload = String.format("New message from %s in %s: %s", message.getSender().getDisplayName(), conversation.getName(), message.getContent());
+        String payload = String.format("New message from %s in %s: %s",
+                message.getSender().getDisplayName(),
+                conversation.getName(),
+                toNotificationPreview(message));
 
         if (tokens.isEmpty()) {
             log.info("Push notification skipped for {} because no active device tokens were found. Payload={}", recipient.getUsername(), payload);
@@ -39,5 +41,15 @@ public class NotificationService {
             return token;
         }
         return token.substring(0, 4) + "..." + token.substring(token.length() - 4);
+    }
+
+    private String toNotificationPreview(ChatMessage message) {
+        if (message.getMessageType() == MessageType.IMAGE) {
+            return "[Image]";
+        }
+        if (message.getMessageType() == MessageType.VIDEO) {
+            return "[Video]";
+        }
+        return message.getContent();
     }
 }
