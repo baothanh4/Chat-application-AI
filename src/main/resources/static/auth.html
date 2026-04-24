@@ -1208,6 +1208,103 @@
             color: var(--text-muted);
         }
 
+        .message-inbox-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .message-inbox-call-panel {
+            margin-top: 12px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            display: grid;
+            gap: 10px;
+        }
+
+        .message-inbox-call-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .call-media-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .call-media-box {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            padding: 8px;
+            background: rgba(15,23,42,0.45);
+        }
+
+        .call-media-box span {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .call-media-box video {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #020617;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+        }
+
+        .call-incoming-actions {
+            display: none;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .call-incoming-actions.visible {
+            display: flex;
+        }
+
+        .call-history-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .call-history-empty {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .call-history-item {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            background: rgba(255,255,255,0.02);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .call-history-meta {
+            min-width: 0;
+        }
+
+        .call-history-meta strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        .call-history-meta span {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         .message-badge {
             display: inline-flex;
             align-items: center;
@@ -1445,6 +1542,7 @@
             .ai-insights-header { flex-direction: column; }
             .ai-insights-controls { justify-content: flex-start; }
             .ai-conversation-select { min-width: 0; width: 100%; }
+            .call-media-grid { grid-template-columns: 1fr; }
         }
 
         /* ====== LOADING SPINNER ====== */
@@ -1932,9 +2030,32 @@
                         <h3>💬 Hộp thư tin nhắn</h3>
                         <p>Hiện số tin chưa đọc và tin nhắn cuối từ từng cuộc hội thoại.</p>
                     </div>
-                    <button class="btn-secondary" id="refreshInboxBtn" type="button">🔄 Làm mới</button>
+                    <div class="message-inbox-actions">
+                        <button class="btn-secondary" id="callAudioBtn" type="button">📞 Gọi điện thoại</button>
+                        <button class="btn-secondary" id="callVideoBtn" type="button">📹 Gọi camera</button>
+                        <button class="btn-secondary" id="hangupCallBtn" type="button" disabled>⛔ Kết thúc</button>
+                        <button class="btn-secondary" id="refreshInboxBtn" type="button">🔄 Làm mới</button>
+                    </div>
                 </div>
                 <div class="message-inbox-list" id="messageInboxList"></div>
+                <div class="message-inbox-call-panel" id="callPanel">
+                    <div class="message-inbox-call-status" id="callStatusText">Chọn 1 hội thoại riêng tư để gọi.</div>
+                    <div class="call-incoming-actions" id="incomingCallActions">
+                        <button class="btn-secondary" id="acceptCallBtn" type="button">✅ Nhấc máy</button>
+                        <button class="btn-secondary" id="rejectCallBtn" type="button">❌ Từ chối</button>
+                    </div>
+                    <div class="call-media-grid">
+                        <div class="call-media-box">
+                            <span>Bạn</span>
+                            <video id="localCallVideo" autoplay playsinline muted></video>
+                        </div>
+                        <div class="call-media-box">
+                            <span>Người bên kia</span>
+                            <video id="remoteCallVideo" autoplay playsinline></video>
+                        </div>
+                    </div>
+                    <div class="call-history-list" id="callHistoryList"></div>
+                </div>
             </div>
 
             <div class="ai-insights" id="aiInsights">
@@ -2028,6 +2149,17 @@
     const refreshFriendHubBtn = $('refreshFriendHubBtn');
     const messageInbox = $('messageInbox');
     const messageInboxList = $('messageInboxList');
+    const callAudioBtn = $('callAudioBtn');
+    const callVideoBtn = $('callVideoBtn');
+    const hangupCallBtn = $('hangupCallBtn');
+    const callPanel = $('callPanel');
+    const callStatusText = $('callStatusText');
+    const incomingCallActions = $('incomingCallActions');
+    const acceptCallBtn = $('acceptCallBtn');
+    const rejectCallBtn = $('rejectCallBtn');
+    const localCallVideo = $('localCallVideo');
+    const remoteCallVideo = $('remoteCallVideo');
+    const callHistoryList = $('callHistoryList');
     const refreshInboxBtn = $('refreshInboxBtn');
     const aiInsights = $('aiInsights');
     const aiConversationSelect = $('aiConversationSelect');
@@ -2080,9 +2212,17 @@
     let inboxStompClient = null;
     let inboxStompSubscription = null;
     let inboxAiSubscription = null;
+    let inboxCallSubscription = null;
     let inboxRealtimeUserId = null;
     let aiInsightCache = new Map();
     let selectedAiConversationId = null;
+    let currentCallSession = null;
+    let pendingIncomingCall = null;
+    let localCallStream = null;
+    let remoteCallStream = null;
+    let callPeerConnection = null;
+    let pendingIceCandidates = [];
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     /* ====== TAB SWITCHING ====== */
     function showTab(tabName) {
@@ -2181,6 +2321,31 @@
         return date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
     }
 
+    function parseCallLogContent(content) {
+        if (!content || typeof content !== 'string' || !content.startsWith('CALL_LOG|')) {
+            return null;
+        }
+        const parts = content.split('|');
+        if (parts.length < 7) return null;
+        return {
+            callId: parts[1],
+            mode: parts[2],
+            status: parts[3],
+            durationSeconds: Number(parts[4] || 0),
+            callerId: parts[5],
+            calleeId: parts[6]
+        };
+    }
+
+    function formatCallDuration(seconds) {
+        const total = Number(seconds || 0);
+        if (total <= 0) return '0 giay';
+        const mins = Math.floor(total / 60);
+        const secs = total % 60;
+        if (mins <= 0) return `${secs} giay`;
+        return `${mins} phut ${secs} giay`;
+    }
+
     function getInboxTitle(item, currentUserId) {
         if (item.conversationType !== 'PRIVATE') {
             return item.name || 'Nhóm chat';
@@ -2200,7 +2365,478 @@
         if (messageType === 'VIDEO') {
             return prefix + '[Video]';
         }
+        if (messageType === 'SYSTEM') {
+            const log = parseCallLogContent(item.latestMessage.content || '');
+            if (log) {
+                const modeLabel = log.mode === 'VIDEO' ? 'video' : 'điện thoại';
+                if (log.status === 'MISSED') {
+                    return `[Cuoc goi ${modeLabel}] Ban nho`;
+                }
+                if (log.status === 'REJECTED') {
+                    return `[Cuoc goi ${modeLabel}] Bi tu choi`;
+                }
+                return `[Cuoc goi ${modeLabel}] ${formatCallDuration(log.durationSeconds)}`;
+            }
+        }
         return prefix + (item.latestMessage.content || '');
+    }
+
+    function getSelectedPrivateConversationTarget() {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id || !selectedAiConversationId) return null;
+        const selected = inboxItems.find(item => String(item.conversationId) === String(selectedAiConversationId));
+        if (!selected || String(selected.conversationType || '').toUpperCase() !== 'PRIVATE') return null;
+        const peer = (selected.members || []).find(member => String(member.id || '') !== String(currentUser.id));
+        if (!peer?.id) return null;
+        return {
+            conversationId: selected.conversationId,
+            peerId: peer.id,
+            peerName: peer.displayName || peer.username || 'Người dùng'
+        };
+    }
+
+    function updateCallControls() {
+        const target = getSelectedPrivateConversationTarget();
+        const inCall = !!currentCallSession;
+        callAudioBtn.disabled = !target || inCall;
+        callVideoBtn.disabled = !target || inCall;
+        hangupCallBtn.disabled = !inCall;
+
+        if (pendingIncomingCall) {
+            callStatusText.textContent = `Cuộc gọi đến từ ${pendingIncomingCall.fromName} (${pendingIncomingCall.mode === 'VIDEO' ? 'camera' : 'điện thoại'}).`;
+            incomingCallActions.classList.add('visible');
+            return;
+        }
+        incomingCallActions.classList.remove('visible');
+
+        if (currentCallSession) return;
+        if (!target) {
+            callStatusText.textContent = 'Chọn 1 hội thoại riêng tư để gọi.';
+        } else {
+            callStatusText.textContent = `Sẵn sàng gọi ${target.peerName} bằng điện thoại hoặc camera.`;
+        }
+    }
+
+    function setCallStatus(message) {
+        callStatusText.textContent = message;
+    }
+
+    function renderCallHistory(items) {
+        const target = getSelectedPrivateConversationTarget();
+        const currentUser = getCurrentUser();
+        if (!target || !currentUser?.id) {
+            callHistoryList.innerHTML = '<div class="call-history-empty">Chọn hội thoại riêng tư để xem lịch sử cuộc gọi.</div>';
+            return;
+        }
+
+        if (!items || !items.length) {
+            callHistoryList.innerHTML = '<div class="call-history-empty">Chưa có lịch sử cuộc gọi.</div>';
+            return;
+        }
+
+        callHistoryList.innerHTML = items.map(item => {
+            const isOutgoing = String(item.caller?.id || '') === String(currentUser.id);
+            const modeLabel = item.mode === 'VIDEO' ? 'video' : 'điện thoại';
+            let title = isOutgoing ? `Cuộc gọi ${modeLabel} đi` : `Cuộc gọi ${modeLabel} đến`;
+            if (item.status === 'MISSED') {
+                title = isOutgoing ? `Cuộc gọi ${modeLabel} nhỡ` : `Bạn bị nhỡ`;
+            } else if (item.status === 'REJECTED') {
+                title = isOutgoing ? `Cuộc gọi ${modeLabel} bị từ chối` : `Bạn đã từ chối cuộc gọi`;
+            }
+            const timeText = formatInboxTime(item.startedAt);
+            const durationText = formatCallDuration(item.durationSeconds);
+            return `
+                <div class="call-history-item">
+                    <div class="call-history-meta">
+                        <strong>${escapeHtml(title)}</strong>
+                        <span>${escapeHtml(durationText)} · ${escapeHtml(timeText)}</span>
+                    </div>
+                    <button class="btn-secondary call-history-redial-btn" type="button" data-mode="${escapeHtml(item.mode || 'AUDIO')}">Gọi lại</button>
+                </div>
+            `;
+        }).join('');
+
+        callHistoryList.querySelectorAll('.call-history-redial-btn').forEach(btn => {
+            btn.addEventListener('click', () => startOutgoingCall(btn.dataset.mode || 'AUDIO'));
+        });
+    }
+
+    async function loadCallHistoryForSelectedConversation() {
+        const target = getSelectedPrivateConversationTarget();
+        if (!target) {
+            renderCallHistory([]);
+            return;
+        }
+
+        try {
+            const data = await fetchJson(`/api/calls/conversations/${encodeURIComponent(target.conversationId)}?page=0&size=20`);
+            renderCallHistory(data?.content || []);
+        } catch (err) {
+            callHistoryList.innerHTML = '<div class="call-history-empty">Không thể tải lịch sử cuộc gọi.</div>';
+        }
+    }
+
+    async function ensureRemotePlayback() {
+        if (!remoteCallVideo) return;
+        remoteCallVideo.muted = false;
+        remoteCallVideo.volume = 1;
+        try {
+            await remoteCallVideo.play();
+        } catch (err) {
+            // Some browsers require explicit interaction before media playback.
+        }
+    }
+
+    async function startOutgoingCall(mode) {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id) {
+            setCallStatus('Bạn cần đăng nhập trước khi gọi.');
+            return;
+        }
+        if (currentCallSession) {
+            setCallStatus('Bạn đang có một cuộc gọi đang diễn ra.');
+            return;
+        }
+        if (!inboxStompClient?.connected) {
+            setCallStatus('WebSocket chưa kết nối, không thể gọi lúc này.');
+            return;
+        }
+
+        const target = getSelectedPrivateConversationTarget();
+        if (!target) {
+            setCallStatus('Hãy chọn một hội thoại riêng tư để gọi.');
+            return;
+        }
+
+        try {
+            localCallStream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: mode === 'VIDEO'
+            });
+            localCallVideo.srcObject = localCallStream;
+
+            currentCallSession = {
+                conversationId: target.conversationId,
+                peerId: target.peerId,
+                peerName: target.peerName,
+                mode,
+                callId: null,
+                outgoing: true
+            };
+            setCallStatus(`Đang gọi ${target.peerName} bằng ${mode === 'VIDEO' ? 'camera' : 'điện thoại'}...`);
+            updateCallControls();
+            sendCallSignal('INVITE', target.peerId, {
+                conversationId: target.conversationId,
+                mode,
+                payload: { fromName: currentUser.displayName || currentUser.username || 'Người dùng' }
+            });
+        } catch (err) {
+            setCallStatus(err.message || 'Không thể truy cập micro/camera.');
+            cleanupCallState(false);
+        }
+    }
+
+    function sendCallSignal(type, toUserId, options = {}) {
+        const currentUser = getCurrentUser();
+        if (!currentUser?.id || !inboxStompClient?.connected) return;
+
+        const payload = {
+            callId: options.callId || currentCallSession?.callId || pendingIncomingCall?.callId || null,
+            conversationId: options.conversationId || currentCallSession?.conversationId || pendingIncomingCall?.conversationId || selectedAiConversationId,
+            fromUserId: currentUser.id,
+            toUserId,
+            type,
+            mode: options.mode || currentCallSession?.mode || pendingIncomingCall?.mode || 'AUDIO',
+            payload: options.payload || {}
+        };
+
+        inboxStompClient.send('/app/call.signal', {}, JSON.stringify(payload));
+    }
+
+    async function ensurePeerConnection() {
+        if (callPeerConnection) return callPeerConnection;
+        if (!currentCallSession) {
+            throw new Error('Không có thông tin cuộc gọi để tạo kết nối.');
+        }
+
+        callPeerConnection = new RTCPeerConnection(rtcConfig);
+        callPeerConnection.onicecandidate = event => {
+            if (!event.candidate || !currentCallSession) return;
+            sendCallSignal('ICE_CANDIDATE', currentCallSession.peerId, {
+                conversationId: currentCallSession.conversationId,
+                mode: currentCallSession.mode,
+                payload: { candidate: event.candidate }
+            });
+        };
+
+        callPeerConnection.ontrack = event => {
+            remoteCallStream = event.streams && event.streams[0] ? event.streams[0] : remoteCallStream;
+            if (!remoteCallStream) {
+                remoteCallStream = new MediaStream();
+            }
+            if (!event.streams || !event.streams[0]) {
+                remoteCallStream.addTrack(event.track);
+            }
+            remoteCallVideo.srcObject = remoteCallStream;
+            ensureRemotePlayback();
+        };
+
+        callPeerConnection.onconnectionstatechange = () => {
+            const state = callPeerConnection.connectionState;
+            if (state === 'connected') {
+                setCallStatus(`Đã kết nối với ${currentCallSession.peerName}.`);
+            }
+            if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+                cleanupCallState(false);
+                setCallStatus('Cuộc gọi đã kết thúc.');
+            }
+        };
+
+        if (localCallStream) {
+            localCallStream.getTracks().forEach(track => callPeerConnection.addTrack(track, localCallStream));
+        }
+        return callPeerConnection;
+    }
+
+    async function handleIncomingOffer(signal) {
+        if (!currentCallSession || String(currentCallSession.peerId) !== String(signal.fromUserId)) {
+            return;
+        }
+        if (currentCallSession.callId && signal.callId && String(currentCallSession.callId) !== String(signal.callId)) {
+            return;
+        }
+        const pc = await ensurePeerConnection();
+        await pc.setRemoteDescription(signal.payload?.sdp);
+        await flushPendingIceCandidates();
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendCallSignal('ANSWER', signal.fromUserId, {
+            conversationId: signal.conversationId,
+            mode: currentCallSession.mode,
+            payload: { sdp: pc.localDescription }
+        });
+    }
+
+    async function handleIncomingAnswer(signal) {
+        if (!callPeerConnection || !currentCallSession || String(currentCallSession.peerId) !== String(signal.fromUserId)) {
+            return;
+        }
+        if (currentCallSession.callId && signal.callId && String(currentCallSession.callId) !== String(signal.callId)) {
+            return;
+        }
+        await callPeerConnection.setRemoteDescription(signal.payload?.sdp);
+        await flushPendingIceCandidates();
+    }
+
+    async function handleIncomingIce(signal) {
+        if (!currentCallSession || String(currentCallSession.peerId) !== String(signal.fromUserId)) {
+            return;
+        }
+        if (currentCallSession.callId && signal.callId && String(currentCallSession.callId) !== String(signal.callId)) {
+            return;
+        }
+        const candidate = signal.payload?.candidate;
+        if (!candidate) return;
+
+        if (!callPeerConnection || !callPeerConnection.remoteDescription) {
+            pendingIceCandidates.push(candidate);
+            return;
+        }
+
+        await callPeerConnection.addIceCandidate(candidate);
+    }
+
+    async function flushPendingIceCandidates() {
+        if (!callPeerConnection || !callPeerConnection.remoteDescription || !pendingIceCandidates.length) {
+            return;
+        }
+
+        const queued = [...pendingIceCandidates];
+        pendingIceCandidates = [];
+        for (const candidate of queued) {
+            try {
+                await callPeerConnection.addIceCandidate(candidate);
+            } catch (err) {
+                console.warn('Failed to apply queued ICE candidate', err);
+            }
+        }
+    }
+
+    async function createOfferAfterAccept() {
+        if (!currentCallSession) return;
+        const pc = await ensurePeerConnection();
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendCallSignal('OFFER', currentCallSession.peerId, {
+            conversationId: currentCallSession.conversationId,
+            mode: currentCallSession.mode,
+            payload: { sdp: pc.localDescription }
+        });
+    }
+
+    async function acceptIncomingCall() {
+        if (!pendingIncomingCall || currentCallSession) return;
+        try {
+            localCallStream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: pendingIncomingCall.mode === 'VIDEO'
+            });
+            localCallVideo.srcObject = localCallStream;
+
+            currentCallSession = {
+                conversationId: pendingIncomingCall.conversationId,
+                peerId: pendingIncomingCall.fromUserId,
+                peerName: pendingIncomingCall.fromName,
+                mode: pendingIncomingCall.mode,
+                callId: pendingIncomingCall.callId || null,
+                outgoing: false
+            };
+            sendCallSignal('ACCEPT', pendingIncomingCall.fromUserId, {
+                conversationId: pendingIncomingCall.conversationId,
+                mode: pendingIncomingCall.mode,
+                callId: pendingIncomingCall.callId || null
+            });
+            setCallStatus(`Đang kết nối với ${pendingIncomingCall.fromName}...`);
+            pendingIncomingCall = null;
+            updateCallControls();
+        } catch (err) {
+            setCallStatus(err.message || 'Không thể bật micro/camera để nhận cuộc gọi.');
+            cleanupCallState(false);
+        }
+    }
+
+    function rejectIncomingCall() {
+        if (!pendingIncomingCall) return;
+        sendCallSignal('REJECT', pendingIncomingCall.fromUserId, {
+            conversationId: pendingIncomingCall.conversationId,
+            mode: pendingIncomingCall.mode,
+            callId: pendingIncomingCall.callId || null,
+            payload: { reason: 'Người nhận từ chối cuộc gọi.' }
+        });
+        pendingIncomingCall = null;
+        cleanupCallState(false);
+        setCallStatus('Bạn đã từ chối cuộc gọi.');
+        setTimeout(loadCallHistoryForSelectedConversation, 250);
+    }
+
+    function endCurrentCall() {
+        if (!currentCallSession) return;
+        sendCallSignal('END', currentCallSession.peerId, {
+            conversationId: currentCallSession.conversationId,
+            mode: currentCallSession.mode,
+            callId: currentCallSession.callId || null
+        });
+        cleanupCallState(false);
+        setCallStatus('Đã kết thúc cuộc gọi.');
+        setTimeout(loadCallHistoryForSelectedConversation, 250);
+    }
+
+    function cleanupCallState(resetStatus) {
+        if (callPeerConnection) {
+            try { callPeerConnection.close(); } catch (e) {}
+            callPeerConnection = null;
+        }
+
+        if (localCallStream) {
+            localCallStream.getTracks().forEach(track => track.stop());
+            localCallStream = null;
+        }
+        if (remoteCallStream) {
+            remoteCallStream.getTracks().forEach(track => track.stop());
+            remoteCallStream = null;
+        }
+
+        localCallVideo.srcObject = null;
+        remoteCallVideo.srcObject = null;
+        pendingIceCandidates = [];
+        currentCallSession = null;
+        pendingIncomingCall = null;
+        if (resetStatus) {
+            setCallStatus('Chọn 1 hội thoại riêng tư để gọi.');
+        }
+        updateCallControls();
+    }
+
+    async function handleCallSignalFrame(frame) {
+        let signal;
+        try {
+            signal = JSON.parse(frame.body || '{}');
+        } catch (err) {
+            return;
+        }
+
+        const type = String(signal.type || '').toUpperCase();
+        if (!type) return;
+
+        if (type === 'ERROR') {
+            setCallStatus(signal.payload?.message || 'Lỗi call signaling.');
+            cleanupCallState(false);
+            loadCallHistoryForSelectedConversation();
+            return;
+        }
+
+        if (type === 'INVITE') {
+            if (currentCallSession || pendingIncomingCall) {
+                sendCallSignal('REJECT', signal.fromUserId, {
+                    conversationId: signal.conversationId,
+                    mode: signal.mode || 'AUDIO',
+                    payload: { reason: 'Người nhận đang bận cuộc gọi khác.' }
+                });
+                return;
+            }
+            pendingIncomingCall = {
+                callId: signal.callId || null,
+                conversationId: signal.conversationId,
+                fromUserId: signal.fromUserId,
+                fromName: signal.payload?.fromName || 'Người dùng',
+                mode: signal.mode || 'AUDIO'
+            };
+            updateCallControls();
+            return;
+        }
+
+        if (type === 'ACCEPT') {
+            if (currentCallSession && String(currentCallSession.peerId) === String(signal.fromUserId)) {
+                currentCallSession.callId = signal.callId || currentCallSession.callId || null;
+                setCallStatus(`${currentCallSession.peerName} đã nhấc máy, đang thiết lập cuộc gọi...`);
+                await createOfferAfterAccept();
+            }
+            return;
+        }
+
+        if (type === 'REJECT' || type === 'CANCEL') {
+            if (currentCallSession && String(currentCallSession.peerId) === String(signal.fromUserId)) {
+                const reason = signal.payload?.reason || 'Cuộc gọi đã bị từ chối.';
+                cleanupCallState(false);
+                setCallStatus(reason);
+                loadCallHistoryForSelectedConversation();
+            }
+            return;
+        }
+
+        if (type === 'END') {
+            if (currentCallSession && String(currentCallSession.peerId) === String(signal.fromUserId)) {
+                const peerName = currentCallSession.peerName;
+                cleanupCallState(false);
+                setCallStatus(`${peerName || 'Đối phương'} đã kết thúc cuộc gọi.`);
+                loadCallHistoryForSelectedConversation();
+            }
+            return;
+        }
+
+        if (type === 'OFFER') {
+            await handleIncomingOffer(signal);
+            return;
+        }
+
+        if (type === 'ANSWER') {
+            await handleIncomingAnswer(signal);
+            return;
+        }
+
+        if (type === 'ICE_CANDIDATE') {
+            await handleIncomingIce(signal);
+        }
     }
 
     function renderInbox(items, options = {}) {
@@ -2211,6 +2847,8 @@
             messageInboxList.innerHTML = '';
             renderAiConversationOptions();
             renderAiInsightEmpty();
+            updateCallControls();
+            renderCallHistory([]);
             return;
         }
 
@@ -2218,6 +2856,8 @@
             messageInboxList.innerHTML = '<div class="message-inbox-empty">Chưa có hội thoại nào.</div>';
             renderAiConversationOptions();
             renderAiInsightEmpty();
+            updateCallControls();
+            renderCallHistory([]);
             return;
         }
 
@@ -2257,6 +2897,8 @@
         } else if (!selectedAiConversationId) {
             renderAiInsightEmpty();
         }
+        updateCallControls();
+        loadCallHistoryForSelectedConversation();
     }
 
     async function loadInboxSummary() {
@@ -2319,6 +2961,13 @@
                     console.warn('Invalid AI update payload', err);
                 }
             });
+            inboxCallSubscription = inboxStompClient.subscribe(`/topic/users/${userId}/calls`, async (frame) => {
+                try {
+                    await handleCallSignalFrame(frame);
+                } catch (err) {
+                    console.warn('Invalid call update payload', err);
+                }
+            });
         }, (error) => {
             console.warn('Inbox websocket connection failed', error);
             disconnectInboxRealtime();
@@ -2341,6 +2990,12 @@
                 inboxAiSubscription.unsubscribe();
             } catch (e) {}
             inboxAiSubscription = null;
+        }
+        if (inboxCallSubscription) {
+            try {
+                inboxCallSubscription.unsubscribe();
+            } catch (e) {}
+            inboxCallSubscription = null;
         }
         if (inboxStompClient) {
             try {
@@ -2395,6 +3050,8 @@
             messageInbox.classList.remove('visible');
             aiInsights.classList.remove('visible');
             disconnectInboxRealtime();
+            cleanupCallState(true);
+            renderCallHistory([]);
             if (profileUpdateMessage) clearMessage(profileUpdateMessage);
             if (changePasswordMessage) clearMessage(changePasswordMessage);
             if (profileFaceMessage) clearMessage(profileFaceMessage);
@@ -2421,6 +3078,7 @@
         enableFaceBtn.disabled = !user.faceTemplatePath || user.faceLoginEnabled;
         disableFaceBtn.disabled = !user.faceTemplatePath;
         deleteFaceBtn.disabled = !user.faceTemplatePath;
+        updateCallControls();
     }
 
     function getLoggedInUser() {
@@ -3401,6 +4059,7 @@
 
     /* ====== LOGOUT ====== */
     logoutBtn.addEventListener('click', () => {
+        endCurrentCall();
         localStorage.removeItem('currentUser');
         renderCurrentUser();
         friendSearchInput.value = '';
@@ -3427,6 +4086,17 @@
         if (!conversationId) return;
         selectedAiConversationId = conversationId;
         loadAiInsight(conversationId);
+        updateCallControls();
+        loadCallHistoryForSelectedConversation();
+    });
+
+    callAudioBtn.addEventListener('click', () => startOutgoingCall('AUDIO'));
+    callVideoBtn.addEventListener('click', () => startOutgoingCall('VIDEO'));
+    hangupCallBtn.addEventListener('click', endCurrentCall);
+    acceptCallBtn.addEventListener('click', acceptIncomingCall);
+    rejectCallBtn.addEventListener('click', rejectIncomingCall);
+    remoteCallVideo.addEventListener('loadedmetadata', () => {
+        ensureRemotePlayback();
     });
 
     friendSearchInput.addEventListener('input', (e) => {
@@ -3480,6 +4150,9 @@
 
     /* ====== CLEANUP ====== */
     window.addEventListener('beforeunload', () => {
+        if (currentCallSession) {
+            endCurrentCall();
+        }
         stopStream(registrationStream);
         stopStream(loginStream);
         stopStream(profileFaceStream);
@@ -3491,6 +4164,7 @@
         loadInboxSummary();
         startInboxPolling();
     }
+    updateCallControls();
 </script>
 </body>
 </html>

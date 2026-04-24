@@ -51,17 +51,31 @@ public class ChatMessageService {
             conversation = conversationService.resolveOrCreatePrivateConversation(sender.getId(), request.getRecipientId());
         }
 
-        ChatMessage message = new ChatMessage();
-        message.setConversation(conversation);
-        message.setSender(sender);
-        message.setContent(request.getContent().trim());
-        message.setMessageType(request.getMessageType() == null ? MessageType.TEXT : request.getMessageType());
-        message.setClientMessageId(request.getClientMessageId());
-        message.setStatus(MessageStatus.SENT);
+        return createAndPublishMessage(
+                conversation,
+                sender,
+                request.getContent().trim(),
+                request.getMessageType() == null ? MessageType.TEXT : request.getMessageType(),
+                request.getClientMessageId(),
+                MessageStatus.SENT
+        );
+    }
 
-        ChatMessage saved = chatMessageRepository.save(message);
-        messageQueueService.publishMessageCreated(saved);
-        return toResponse(saved);
+    @Transactional
+    public ChatMessageResponse sendSystemMessage(UUID conversationId, UUID actorUserId, String content) {
+        Conversation conversation = conversationService.requireConversation(conversationId);
+        if (!conversationService.isMember(conversationId, actorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of this conversation");
+        }
+        UserAccount actor = userAccountService.requireUser(actorUserId);
+        return createAndPublishMessage(
+                conversation,
+                actor,
+                content,
+                MessageType.SYSTEM,
+                "system-" + UUID.randomUUID(),
+                MessageStatus.DELIVERED
+        );
     }
 
     @Transactional(readOnly = true)
@@ -142,5 +156,24 @@ public class ChatMessageService {
                 message.getDeliveredAt(),
                 message.getReadAt()
         );
+    }
+
+    private ChatMessageResponse createAndPublishMessage(Conversation conversation,
+                                                        UserAccount sender,
+                                                        String content,
+                                                        MessageType type,
+                                                        String clientMessageId,
+                                                        MessageStatus status) {
+        ChatMessage message = new ChatMessage();
+        message.setConversation(conversation);
+        message.setSender(sender);
+        message.setContent(content);
+        message.setMessageType(type);
+        message.setClientMessageId(clientMessageId);
+        message.setStatus(status);
+
+        ChatMessage saved = chatMessageRepository.save(message);
+        messageQueueService.publishMessageCreated(saved);
+        return toResponse(saved);
     }
 }
