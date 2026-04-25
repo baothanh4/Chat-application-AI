@@ -31,6 +31,21 @@ public class Conversation extends BaseEntity {
     @Column(length = 500)
     private String avatarPath;
 
+    @Column(length = 4000)
+    private String aiSystemPrompt;
+
+    @Column(length = 2000)
+    private String aiBehaviorPrompt;
+
+    @Column
+    private Double aiTemperature;
+
+    @Column
+    private Integer aiMaxTokens;
+
+    @Column
+    private Boolean aiUseOfflineModel = true;
+
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @ToString.Exclude
     private Set<ConversationMember> members = new LinkedHashSet<>();

@@ -3,7 +3,9 @@ package org.example.chatapplication.Service;
 import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.CreateGroupConversationRequest;
 import org.example.chatapplication.DTO.Request.CreatePrivateConversationRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationAiConfigRequest;
 import org.example.chatapplication.DTO.Response.ChatMessageResponse;
+import org.example.chatapplication.DTO.Response.ConversationAiConfigResponse;
 import org.example.chatapplication.DTO.Response.ConversationResponse;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.ChatMessage;
@@ -115,6 +117,38 @@ public class ConversationService {
     }
 
     @Transactional(readOnly = true)
+    public ConversationAiConfigResponse getAiConfig(UUID conversationId, UUID userId) {
+        requireMemberAccess(conversationId, userId);
+        Conversation conversation = requireConversation(conversationId);
+        return toAiConfigResponse(conversation, userId);
+    }
+
+    @Transactional
+    public ConversationAiConfigResponse updateAiConfig(UUID conversationId, UpdateConversationAiConfigRequest request) {
+        requireMemberAccess(conversationId, request.getUserId());
+        Conversation conversation = requireConversation(conversationId);
+
+        if (request.getSystemPrompt() != null) {
+            conversation.setAiSystemPrompt(blankToNull(request.getSystemPrompt()));
+        }
+        if (request.getBehaviorPrompt() != null) {
+            conversation.setAiBehaviorPrompt(blankToNull(request.getBehaviorPrompt()));
+        }
+        if (request.getTemperature() != null) {
+            conversation.setAiTemperature(request.getTemperature());
+        }
+        if (request.getMaxTokens() != null) {
+            conversation.setAiMaxTokens(request.getMaxTokens());
+        }
+        if (request.getUseOfflineModel() != null) {
+            conversation.setAiUseOfflineModel(request.getUseOfflineModel());
+        }
+
+        Conversation saved = conversationRepository.save(conversation);
+        return toAiConfigResponse(saved, request.getUserId());
+    }
+
+    @Transactional(readOnly = true)
     public ConversationResponse toResponse(Conversation conversation) {
         Set<UserResponse> members = new LinkedHashSet<>();
         for (ConversationMember member : conversationMemberRepository.findByConversationId(conversation.getId())) {
@@ -215,6 +249,36 @@ public class ConversationService {
     @Transactional(readOnly = true)
     boolean isMember(UUID conversationId, UUID userId) {
         return conversationMemberRepository.existsByConversationIdAndUserId(conversationId, userId);
+    }
+
+    private void requireMemberAccess(UUID conversationId, UUID userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
+        }
+        if (!isMember(conversationId, userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of this conversation");
+        }
+    }
+
+    private ConversationAiConfigResponse toAiConfigResponse(Conversation conversation, UUID userId) {
+        return new ConversationAiConfigResponse(
+                conversation.getId(),
+                userId,
+                conversation.getAiSystemPrompt(),
+                conversation.getAiBehaviorPrompt(),
+                conversation.getAiTemperature(),
+                conversation.getAiMaxTokens(),
+                conversation.getAiUseOfflineModel() == null || conversation.getAiUseOfflineModel(),
+                conversation.getUpdatedAt()
+        );
+    }
+
+    private String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void addMember(Conversation conversation, UserAccount user, ConversationRole role) {

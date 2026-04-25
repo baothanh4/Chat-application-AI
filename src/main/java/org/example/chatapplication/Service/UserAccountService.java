@@ -175,6 +175,16 @@ public class UserAccountService {
         return userAccountRepository.save(user);
     }
 
+    @Transactional
+    public UserAccount deleteAvatar(UUID userId) {
+        UserAccount user = requireUser(userId);
+        if (user.getAvatarPath() != null) {
+            fileStorageService.deleteStoredFile(user.getAvatarPath());
+            user.setAvatarPath(null);
+        }
+        return userAccountRepository.save(user);
+    }
+
     @Transactional(readOnly = true)
     public UserResponse toResponse(UserAccount user) {
         return new UserResponse(

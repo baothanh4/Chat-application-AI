@@ -26,7 +26,7 @@ public class CallSignalingService {
     private final CallHistoryService callHistoryService;
     private final ConcurrentMap<UUID, UUID> activeCallPeers = new ConcurrentHashMap<>();
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CallSignalResponse validateAndBuild(CallSignalRequest request) {
         if (request == null || request.getConversationId() == null || request.getFromUserId() == null
                 || request.getToUserId() == null || request.getType() == null) {

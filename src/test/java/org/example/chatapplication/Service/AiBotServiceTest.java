@@ -1,6 +1,5 @@
 package org.example.chatapplication.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.chatapplication.Repository.ChatMessageRepository;
 import org.example.chatapplication.Repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,8 +10,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AiBotServiceTest {
@@ -22,6 +25,10 @@ class AiBotServiceTest {
     private ConversationAiService conversationAiService;
     @Mock
     private ChatMessageRepository chatMessageRepository;
+    @Mock
+    private ConversationService conversationService;
+    @Mock
+    private OfflineLlmService offlineLlmService;
 
     private AiBotService aiBotService;
 
@@ -30,38 +37,54 @@ class AiBotServiceTest {
         aiBotService = new AiBotService(
                 userAccountRepository,
                 conversationAiService,
+                conversationService,
                 chatMessageRepository,
-                new ObjectMapper()
+                offlineLlmService
         );
         ReflectionTestUtils.setField(aiBotService, "botUsername", "ai-assistant");
-        ReflectionTestUtils.setField(aiBotService, "openRouterApiKey", "");
-        ReflectionTestUtils.setField(aiBotService, "openRouterModel", "google/gemini-2.0-flash-001");
+        ReflectionTestUtils.setField(aiBotService, "localAiEnabled", true);
+        ReflectionTestUtils.setField(aiBotService, "defaultTemperature", 0.7d);
+        ReflectionTestUtils.setField(aiBotService, "defaultMaxTokens", 512);
     }
 
     @Test
     void generateBotReplyShouldAnswerVietnamTimeQuestionsDirectly() {
         String reply = aiBotService.generateBotReply("bây giờ là mấy giờ ở Việt Nam", UUID.randomUUID());
 
-        assertThat(reply).contains("Việt Nam");
+        assertThat(reply).contains("Viet Nam");
         assertThat(reply).containsPattern("\\d{2}:\\d{2}, \\d{2}/\\d{2}/\\d{4}");
     }
 
     @Test
     void generateBotReplyShouldSupportGeneralQuestionsInFallbackMode() {
+        when(offlineLlmService.generateWithOllama(org.mockito.ArgumentMatchers.anyString(), anyDouble(), anyInt()))
+                .thenReturn(Optional.empty());
+
         String reply = aiBotService.generateBotReply("Bạn có thể làm gì?", UUID.randomUUID());
 
-        assertThat(reply).contains("kiến thức chung");
-        assertThat(reply).contains("task");
-        assertThat(reply).doesNotContain("chỉ riêng tóm tắt");
+        assertThat(reply).contains("model offline");
+        assertThat(reply).contains("thu lai");
     }
 
     @Test
     void helpMessageShouldDescribeGeneralAssistantCapabilities() {
+        when(offlineLlmService.getOllamaModel()).thenReturn("llama3.1:8b");
+
         String reply = aiBotService.generateBotReply("help", UUID.randomUUID());
 
-        assertThat(reply).contains("hỏi tự do");
-        assertThat(reply).contains("kiến thức chung");
-        assertThat(reply).contains("thời gian");
+        assertThat(reply).contains("Offline Model");
+        assertThat(reply).contains("tom tat");
+        assertThat(reply).contains("llama3.1:8b");
+    }
+
+    @Test
+    void generateBotReplyShouldUseOfflineModelWhenAvailable() {
+        when(offlineLlmService.generateWithOllama(org.mockito.ArgumentMatchers.anyString(), anyDouble(), anyInt()))
+                .thenReturn(Optional.of("Tra loi tu model offline"));
+
+        String reply = aiBotService.generateBotReply("Giai thich clean architecture", UUID.randomUUID());
+
+        assertThat(reply).isEqualTo("Tra loi tu model offline");
     }
 }
 

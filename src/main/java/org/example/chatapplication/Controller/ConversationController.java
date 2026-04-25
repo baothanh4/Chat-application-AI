@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.CreateGroupConversationRequest;
 import org.example.chatapplication.DTO.Request.CreatePrivateConversationRequest;
 import org.example.chatapplication.DTO.Request.MarkConversationReadRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationAiConfigRequest;
+import org.example.chatapplication.DTO.Response.ConversationAiConfigResponse;
 import org.example.chatapplication.DTO.Response.ConversationInboxItemResponse;
 import org.example.chatapplication.DTO.Response.ConversationMessagesResponse;
 import org.example.chatapplication.DTO.Response.ConversationResponse;
@@ -69,5 +71,17 @@ public class ConversationController {
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(chatMessageService.getHistory(conversationId, page, size));
+    }
+
+    @GetMapping("/{conversationId}/ai-config")
+    ResponseEntity<ConversationAiConfigResponse> getAiConfig(@PathVariable UUID conversationId,
+                                                             @RequestParam UUID userId) {
+        return ResponseEntity.ok(conversationService.getAiConfig(conversationId, userId));
+    }
+
+    @PutMapping("/{conversationId}/ai-config")
+    ResponseEntity<ConversationAiConfigResponse> updateAiConfig(@PathVariable UUID conversationId,
+                                                                @RequestBody @Valid UpdateConversationAiConfigRequest request) {
+        return ResponseEntity.ok(conversationService.updateAiConfig(conversationId, request));
     }
 }

@@ -8,6 +8,8 @@ A Spring Boot-based realtime chat backend with:
 - Group chat and private chat
 - Device token registration for push notifications
 - Async message processing pipeline for high-volume traffic
+- Built-in Local AI assistant (no OpenRouter dependency)
+- Offline model integration via Ollama (local inference)
 
 ## Tech Stack
 
@@ -52,6 +54,8 @@ Client sends messages to:
 - `POST /api/conversations/group`
 - `GET /api/conversations/users/{userId}`
 - `GET /api/conversations/{conversationId}/messages`
+- `GET /api/conversations/{conversationId}/ai-config?userId=...`
+- `PUT /api/conversations/{conversationId}/ai-config`
 
 ### Messages
 - `POST /api/messages`
@@ -76,6 +80,17 @@ Client sends messages to:
 ```
 
 The app starts on port `8081` by default.
+
+## Offline AI (Ollama)
+
+1. Install Ollama and pull a model, for example `llama3.1:8b`.
+2. Ensure Ollama runs at `http://localhost:11434`.
+3. Keep these env vars in `.env`:
+   - `CHATBOT_OLLAMA_ENABLED=true`
+   - `CHATBOT_OLLAMA_BASE_URL=http://localhost:11434`
+   - `CHATBOT_OLLAMA_MODEL=llama3.1:8b`
+
+When Ollama is unavailable, chatbot replies automatically fall back to rule/context behavior.
 
 ## Sample Flow
 
@@ -128,6 +143,7 @@ For large-scale deployment, the backend should evolve into this architecture:
 ## Notes
 
 - The current implementation is a strong MVP and local demo backend.
+- AI bot now runs in local mode by default (`CHATBOT_LOCAL_ENABLED=true`) and does not require any external OpenRouter key.
 - For production push notifications, replace the logging-based notification service with FCM/APNs/Web Push integration.
 - For million-user scale, use an external broker relay for WebSocket fan-out and keep application nodes stateless.
 - Move Redis credentials out of `application.properties` into environment variables before deploying.

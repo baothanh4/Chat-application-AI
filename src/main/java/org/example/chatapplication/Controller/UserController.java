@@ -86,7 +86,13 @@ public class UserController {
 
     @PostMapping("/{userId}/avatar")
     public ResponseEntity<UserResponse> uploadAvatar(@PathVariable UUID userId, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-        UserAccount user = userAccountService.uploadAvatar(userId, file);
+        UserAccount updatedUser = userAccountService.uploadAvatar(userId, file);
+        return ResponseEntity.ok(userAccountService.toResponse(updatedUser));
+    }
+
+    @DeleteMapping("/{userId}/avatar")
+    public ResponseEntity<UserResponse> deleteAvatar(@PathVariable UUID userId) {
+        UserAccount user = userAccountService.deleteAvatar(userId);
         return ResponseEntity.ok(userAccountService.toResponse(user));
     }
 

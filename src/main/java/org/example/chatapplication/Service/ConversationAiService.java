@@ -1,6 +1,9 @@
 package org.example.chatapplication.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.chatapplication.DTO.Response.ConversationAiInsightResponse;
 import org.example.chatapplication.DTO.Response.ConversationAiTaskResponse;
 import org.example.chatapplication.Model.Entity.ChatMessage;
@@ -41,6 +44,7 @@ import java.util.regex.Matcher;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ConversationAiService {
     private static final int MAX_MESSAGES = 40;
     private static final int MAX_TASKS = 8;
@@ -59,6 +63,8 @@ public class ConversationAiService {
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationAiInsightRepository insightRepository;
     private final ConversationTaskInsightRepository taskRepository;
+    private final OfflineLlmService offlineLlmService;
+    private final ObjectMapper objectMapper;
     private final Clock clock = Clock.systemDefaultZone();
 
     @Transactional(readOnly = true)
@@ -73,7 +79,22 @@ public class ConversationAiService {
     public ConversationAiInsightResponse refreshConversationInsight(UUID conversationId) {
         Conversation conversation = conversationService.requireConversation(conversationId);
         List<ChatMessage> messages = loadRecentMessages(conversationId);
-        AnalysisResult analysis = analyzeConversation(conversation, messages);
+        
+        boolean useLlm = messages.size() >= 5; // Only use LLM if there's enough context
+        AnalysisResult analysis;
+        String modelName = "heuristic-ai-v1";
+
+        if (useLlm) {
+            AnalysisResult llmResult = analyzeConversationWithLlm(conversation, messages);
+            if (llmResult != null) {
+                analysis = llmResult;
+                modelName = "ollama-" + offlineLlmService.getOllamaModel();
+            } else {
+                analysis = analyzeConversation(conversation, messages);
+            }
+        } else {
+            analysis = analyzeConversation(conversation, messages);
+        }
 
         ConversationAiInsight insight = insightRepository.findByConversationId(conversationId)
                 .orElseGet(ConversationAiInsight::new);
@@ -81,7 +102,7 @@ public class ConversationAiService {
         insight.setSummary(analysis.summary());
         insight.setSummaryBullets(String.join("\n", analysis.bullets()));
         insight.setFocusTopic(analysis.focusTopic());
-        insight.setModelName("heuristic-ai-v1");
+        insight.setModelName(modelName);
         insight.setGeneratedAt(Instant.now(clock));
         insight.setSourceMessageCount(messages.size());
         insight.setSourceLatestMessageAt(messages.isEmpty() ? null : messages.getLast().getCreatedAt());
@@ -190,6 +211,89 @@ public class ConversationAiService {
                 + "Những người tham gia chính: " + String.join(", ", topSenders) + ".";
 
         return new AnalysisResult(summary, bullets, topTopics.isEmpty() ? conversation.getName() : topTopics.getFirst(), tasks);
+    }
+
+    private AnalysisResult analyzeConversationWithLlm(Conversation conversation, List<ChatMessage> messages) {
+        if (messages.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder chatContext = new StringBuilder();
+        for (ChatMessage m : messages) {
+            String sender = m.getSender() != null ? m.getSender().getDisplayName() : "Unknown";
+            chatContext.append(sender).append(": ").append(m.getContent()).append("\n");
+        }
+
+        String prompt = """
+                Hãy phân tích đoạn chat dưới đây và trả về kết quả dưới định dạng JSON duy nhất. 
+                Nội dung JSON phải bao gồm:
+                - "summary": Tóm tắt ngắn gọn cuộc hội thoại (tiếng Việt).
+                - "bullets": Các điểm chính quan trọng (mảng chuỗi, tiếng Việt).
+                - "focusTopic": Chủ đề cốt lõi của cuộc trò chuyện.
+                - "tasks": Mảng các công việc hoặc deadline được nhắc tới. Mỗi phần tử gồm:
+                   - "title": Tên task (tiếng Việt).
+                   - "description": Chi tiết công việc.
+                   - "dueAt": Thời hạn (định dạng ISO 8601, hoặc null nếu không rõ).
+                   - "priority": Độ ưu tiên (HIGH, MEDIUM, LOW).
+
+                Đoạn chat:
+                %s
+
+                Lưu ý: Chỉ trả về JSON nguyên bản, không bao gồm lời dẫn hay giải thích.
+                """.formatted(chatContext.toString());
+
+        log.info("Requesting LLM analysis for conversation {}", conversation.getId());
+        Optional<String> response = offlineLlmService.generateWithOllama(prompt, 0.2, 1024);
+
+        if (response.isEmpty()) {
+            log.warn("LLM analysis returned empty response for conversation {}", conversation.getId());
+            return null;
+        }
+
+        try {
+            String jsonStr = response.get().trim();
+            // Clean up markdown if present
+            if (jsonStr.contains("```json")) {
+                jsonStr = jsonStr.substring(jsonStr.indexOf("```json") + 7, jsonStr.lastIndexOf("```")).trim();
+            } else if (jsonStr.contains("```")) {
+                jsonStr = jsonStr.substring(jsonStr.indexOf("```") + 3, jsonStr.lastIndexOf("```")).trim();
+            }
+
+            JsonNode root = objectMapper.readTree(jsonStr);
+            String summary = root.path("summary").asText("Không có tóm tắt.");
+            List<String> bullets = new ArrayList<>();
+            root.path("bullets").forEach(node -> bullets.add(node.asText()));
+            String focusTopic = root.path("focusTopic").asText(conversation.getName());
+
+            List<DetectedTask> tasks = new ArrayList<>();
+            root.path("tasks").forEach(t -> {
+                Instant dueAt = null;
+                String dueStr = t.path("dueAt").asText(null);
+                if (dueStr != null && !dueStr.isBlank() && !dueStr.equalsIgnoreCase("null")) {
+                    try {
+                        dueAt = Instant.parse(dueStr);
+                    } catch (Exception ignored) {
+                        // Attempt some basic fallback parsing if ISO fails
+                    }
+                }
+
+                tasks.add(new DetectedTask(
+                        t.path("title").asText("Công việc mới"),
+                        t.path("description").asText(""),
+                        "", // Snippet is hard to isolate from LLM response
+                        dueAt,
+                        t.path("priority").asText("MEDIUM").toUpperCase(),
+                        "OPEN",
+                        0.9
+                ));
+            });
+
+            log.info("LLM analysis successful for conversation {}", conversation.getId());
+            return new AnalysisResult(summary, bullets, focusTopic, tasks);
+        } catch (Exception e) {
+            log.error("Failed to parse LLM analysis JSON: {}", e.getMessage());
+            return null;
+        }
     }
 
     private Map<String, Long> extractTopicScores(List<ChatMessage> messages) {
