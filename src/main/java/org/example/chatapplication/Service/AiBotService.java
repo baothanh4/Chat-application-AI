@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.chatapplication.DTO.Response.ConversationAiInsightResponse;
 import org.example.chatapplication.DTO.Response.ConversationAiTaskResponse;
 import org.example.chatapplication.Model.Entity.Conversation;
+import org.example.chatapplication.Model.Entity.GlobalAiPolicy;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Repository.ChatMessageRepository;
 import org.example.chatapplication.Repository.UserAccountRepository;
@@ -33,6 +34,7 @@ public class AiBotService {
     private final ConversationService conversationService;
     private final ChatMessageRepository chatMessageRepository;
     private final OfflineLlmService offlineLlmService;
+    private final GlobalAiPolicyService globalAiPolicyService;
 
     @Value("${chatbot.bot-username:ai-assistant}")
     private String botUsername;
@@ -52,12 +54,14 @@ public class AiBotService {
                         ConversationAiService conversationAiService,
                         ConversationService conversationService,
                         ChatMessageRepository chatMessageRepository,
-                        OfflineLlmService offlineLlmService) {
+                        OfflineLlmService offlineLlmService,
+                        GlobalAiPolicyService globalAiPolicyService) {
         this.userAccountRepository = userAccountRepository;
         this.conversationAiService = conversationAiService;
         this.conversationService = conversationService;
         this.chatMessageRepository = chatMessageRepository;
         this.offlineLlmService = offlineLlmService;
+        this.globalAiPolicyService = globalAiPolicyService;
     }
 
     @PostConstruct
@@ -96,6 +100,11 @@ public class AiBotService {
 
     @Transactional(readOnly = true)
     public String generateBotReply(String userMessage, UUID conversationId) {
+        GlobalAiPolicy globalPolicy = globalAiPolicyService.getCurrentPolicy();
+        if (!globalPolicy.isEnabled()) {
+            return "AI assistant tam thoi duoc quan tri vien tat tren toan he thong.";
+        }
+
         if (userMessage == null || userMessage.isBlank()) {
             return helpMessage();
         }
@@ -126,13 +135,16 @@ public class AiBotService {
             return ruleBasedReply(userMessage, conversationId);
         }
 
-        String prompt = buildModelPrompt(userMessage, conversationId, conversation);
-        Double temperature = conversation != null && conversation.getAiTemperature() != null
+        String prompt = buildModelPrompt(userMessage, conversationId, conversation, globalPolicy);
+        Double temperature = globalPolicy.getTemperature() != null
+                ? globalPolicy.getTemperature()
+                : conversation != null && conversation.getAiTemperature() != null
                 ? conversation.getAiTemperature()
                 : defaultTemperature;
         Integer maxTokens = conversation != null && conversation.getAiMaxTokens() != null
                 ? conversation.getAiMaxTokens()
                 : defaultMaxTokens;
+        maxTokens = resolveEffectiveMaxTokens(maxTokens, globalPolicy.getMaxTokens());
 
         Optional<String> modelReply = offlineLlmService.generateWithOllama(prompt, temperature, maxTokens);
         if (modelReply.isPresent()) {
@@ -142,11 +154,22 @@ public class AiBotService {
         return ruleBasedReply(userMessage, conversationId);
     }
 
-    private String buildModelPrompt(String userMessage, UUID conversationId, Conversation conversation) {
+    private String buildModelPrompt(String userMessage, UUID conversationId, Conversation conversation, GlobalAiPolicy globalPolicy) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Ban la AI assistant trong ung dung chat noi bo.\n");
         prompt.append("Tra loi bang tieng Viet, tu nhien, ngan gon, than thien va huu ich.\n");
         prompt.append("Neu cau hoi can liet ke, su dung bullet ro rang.\n");
+
+        if (globalPolicy.getSystemPrompt() != null) {
+            prompt.append("\n[Chinh sach he thong toan cuc]\n")
+                    .append(globalPolicy.getSystemPrompt())
+                    .append("\n");
+        }
+        if (globalPolicy.getProhibitedTopics() != null) {
+            prompt.append("\n[Noi dung can han che]\n")
+                    .append(globalPolicy.getProhibitedTopics())
+                    .append("\n");
+        }
 
         if (conversation != null && conversation.getAiSystemPrompt() != null) {
             prompt.append("\n[Cau hinh system theo phong]\n")
@@ -315,5 +338,12 @@ public class AiBotService {
             }
         }
         return false;
+    }
+
+    private int resolveEffectiveMaxTokens(int requestedMaxTokens, Integer policyMaxTokens) {
+        if (policyMaxTokens == null) {
+            return requestedMaxTokens;
+        }
+        return Math.min(requestedMaxTokens, policyMaxTokens);
     }
 }

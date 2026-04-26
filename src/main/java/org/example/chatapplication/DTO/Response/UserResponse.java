@@ -3,6 +3,7 @@ package org.example.chatapplication.DTO.Response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.chatapplication.Model.Enum.UserRole;
 
 import java.time.LocalDate;
 import java.time.Instant;
@@ -26,5 +27,7 @@ public class UserResponse {
     String faceTemplatePath;
     boolean faceLoginEnabled;
     Instant faceEnrolledAt;
+    UserRole role;
+    boolean accountLocked;
     PresenceResponse presence;
 }

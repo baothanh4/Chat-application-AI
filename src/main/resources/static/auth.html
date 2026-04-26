@@ -3032,6 +3032,41 @@
         startInboxPolling();
     }
 
+    function saveAccessToken(token) {
+        if (!token || typeof token !== 'string' || !token.trim()) {
+            localStorage.removeItem('accessToken');
+            return;
+        }
+        localStorage.setItem('accessToken', token.trim());
+    }
+
+    function getAccessToken() {
+        const token = localStorage.getItem('accessToken');
+        if (!token || !token.trim()) {
+            return null;
+        }
+        return token.trim();
+    }
+
+    function applyAuthPayload(payload) {
+        if (!payload || typeof payload !== 'object') {
+            throw new Error('Du lieu dang nhap khong hop le.');
+        }
+
+        if (payload.user) {
+            const tokenType = (payload.tokenType || 'Bearer').trim();
+            const accessToken = payload.accessToken ? String(payload.accessToken).trim() : '';
+            if (accessToken) {
+                saveAccessToken(tokenType.toLowerCase() === 'bearer' ? accessToken : `${tokenType} ${accessToken}`);
+            }
+            saveCurrentUser(payload.user);
+            return payload.user;
+        }
+
+        saveCurrentUser(payload);
+        return payload;
+    }
+
     function getCurrentUser() {
         const raw = localStorage.getItem('currentUser');
         if (!raw) return null;
@@ -3799,8 +3834,7 @@
                 return;
             }
 
-            const user = JSON.parse(text);
-            saveCurrentUser(user);
+            const user = applyAuthPayload(JSON.parse(text));
             setMessage(loginFaceMessage, 'success', '🎉 Đã nhận diện: ' + (user.displayName || user.username) + '!');
             setStatusBadge(loginFaceStatus, 'ready', 'Đăng nhập thành công!');
             stopAutoFaceLogin();
@@ -3876,8 +3910,7 @@
                 return;
             }
 
-            const user = json || JSON.parse(text);
-            saveCurrentUser(user);
+            const user = applyAuthPayload(json || JSON.parse(text));
             setMessage(loginFaceMessage, 'success', '🎉 Đã đăng nhập: ' + (user.displayName || user.username) + '!');
             setStatusBadge(loginFaceStatus, 'ready', 'Đăng nhập thành công!');
             faceLoginPendingBlob = null;
@@ -3986,8 +4019,7 @@
                 return;
             }
 
-            const user = JSON.parse(text);
-            saveCurrentUser(user);
+            const user = applyAuthPayload(JSON.parse(text));
             setMessage(messageEl, 'success', '🎉 Đăng ký thành công! Xin chào ' + (user.displayName || user.username) + '!');
             setTimeout(() => showTab('login'), 1500);
         } catch (err) {
@@ -4027,8 +4059,7 @@
                 return;
             }
 
-            const user = JSON.parse(text);
-            saveCurrentUser(user);
+            const user = applyAuthPayload(JSON.parse(text));
             setMessage(messageEl, 'success', '🎉 Đăng nhập thành công! Xin chào ' + (user.displayName || user.username) + '!');
         } catch (err) {
             btn.classList.remove('loading');
@@ -4061,6 +4092,7 @@
     logoutBtn.addEventListener('click', () => {
         endCurrentCall();
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('accessToken');
         renderCurrentUser();
         friendSearchInput.value = '';
         friendSearchResults.innerHTML = '';

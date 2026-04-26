@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.AuthLoginRequest;
 import org.example.chatapplication.DTO.Request.AuthRegisterRequest;
+import org.example.chatapplication.DTO.Response.AuthResponse;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Service.AuthService;
 import org.springframework.http.HttpStatus;
@@ -34,17 +35,17 @@ public class AuthController {
     }
 
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    ResponseEntity<UserResponse> login(@RequestBody @Valid AuthLoginRequest request) {
+    ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping(value = "/login/face", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<UserResponse> loginWithFace(@RequestParam("faceImage") MultipartFile faceImage) {
+    ResponseEntity<AuthResponse> loginWithFace(@RequestParam("faceImage") MultipartFile faceImage) {
         return ResponseEntity.ok(authService.loginWithFace(faceImage));
     }
 
     @PostMapping(value = "/login/face/confirm", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<UserResponse> confirmFaceLogin(@RequestParam("faceImage") MultipartFile faceImage,
+    ResponseEntity<AuthResponse> confirmFaceLogin(@RequestParam("faceImage") MultipartFile faceImage,
                                                   @RequestParam("selectedUserId") java.util.UUID selectedUserId) {
         return ResponseEntity.ok(authService.confirmFaceLogin(faceImage, selectedUserId));
     }

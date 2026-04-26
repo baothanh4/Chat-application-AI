@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Core - ChatApplication</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #050b1d;
+            --panel: #0c162e;
+            --panel-2: #111f3f;
+            --text: #e7ecff;
+            --muted: #9aa9d6;
+            --accent: #5b66ff;
+            --danger: #ef4444;
+            --ok: #10b981;
+            --warn: #f59e0b;
+            --border: #243257;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #040817 0%, #050b1d 100%);
+            color: var(--text);
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+        }
+
+        .wrap {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            gap: 16px;
+        }
+
+        h1, h2 {
+            margin: 0 0 8px;
+        }
+
+        .muted { color: var(--muted); }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .kpis {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .kpi {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .kpi strong {
+            display: block;
+            font-size: 28px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input, select, textarea, button {
+            background: #0a1430;
+            color: var(--text);
+            border: 1px solid #334474;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        input, select, textarea { min-width: 180px; }
+
+        button {
+            cursor: pointer;
+            background: #1f2d59;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: #7a84ff;
+            color: #fff;
+        }
+
+        button.danger {
+            background: #531f2d;
+            border-color: #8a384d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #27375e;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .status {
+            margin-top: 8px;
+            color: var(--muted);
+            min-height: 20px;
+        }
+
+        .status.error { color: #ff9fa8; }
+        .status.ok { color: #88ffd1; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="panel">
+        <h1>Admin Core</h1>
+        <div class="row muted">
+            <span id="adminIdentity">Checking admin session...</span>
+            <button id="logoutBtn">Logout</button>
+        </div>
+        <div id="accessStatus" class="status"></div>
+    </header>
+
+    <section class="panel">
+        <h2>Overview</h2>
+        <div class="grid kpis" id="kpiGrid"></div>
+    </section>
+
+    <section class="panel">
+        <h2>User Management</h2>
+        <div class="row">
+            <input id="userQuery" placeholder="Search username/displayName" />
+            <button id="searchUsersBtn">Search</button>
+            <button id="refreshUsersBtn">Refresh</button>
+        </div>
+        <div class="status" id="usersStatus"></div>
+        <table>
+            <thead>
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Lock</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <h2>System Config (AI Policy)</h2>
+        <div class="grid">
+            <label>Enabled
+                <select id="aiEnabled">
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                </select>
+            </label>
+            <label>System Prompt
+                <textarea id="aiSystemPrompt" rows="3"></textarea>
+            </label>
+            <label>Prohibited Topics
+                <textarea id="aiProhibited" rows="3"></textarea>
+            </label>
+            <div class="row">
+                <input id="aiMaxTokens" type="number" min="1" placeholder="maxTokens" />
+                <input id="aiTemperature" type="number" min="0" max="2" step="0.1" placeholder="temperature" />
+                <button class="primary" id="savePolicyBtn">Save Policy</button>
+                <button id="reloadPolicyBtn">Reload</button>
+            </div>
+            <div class="status" id="policyStatus"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Logs & Audit</h2>
+        <div class="row">
+            <button id="refreshAuditBtn">Refresh Logs</button>
+        </div>
+        <div class="status" id="auditStatus"></div>
+        <table>
+            <thead>
+            <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Target User</th>
+                <th>Details</th>
+            </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+        </table>
+    </section>
+</div>
+
+<script>
+    const kpiGrid = document.getElementById('kpiGrid');
+    const usersStatus = document.getElementById('usersStatus');
+    const usersTableBody = document.getElementById('usersTableBody');
+    const userQuery = document.getElementById('userQuery');
+    const accessStatus = document.getElementById('accessStatus');
+    const adminIdentity = document.getElementById('adminIdentity');
+    const policyStatus = document.getElementById('policyStatus');
+    const auditStatus = document.getElementById('auditStatus');
+    const auditTableBody = document.getElementById('auditTableBody');
+
+    function getCurrentUser() {
+        const raw = localStorage.getItem('currentUser');
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function getToken() {
+        return localStorage.getItem('accessToken');
+    }
+
+    function setStatus(el, message, type) {
+        el.className = `status ${type || ''}`.trim();
+        el.textContent = message || '';
+    }
+
+    async function api(url, options) {
+        const token = getToken();
+        if (!token) {
+            throw new Error('Missing access token. Please login again.');
+        }
+
+        const headers = new Headers((options && options.headers) || {});
+        if (!headers.has('Authorization')) {
+            const value = token.toLowerCase().startsWith('bearer ') ? token : `Bearer ${token}`;
+            headers.set('Authorization', value);
+        }
+
+        if (!headers.has('Content-Type') && options && options.body && !(options.body instanceof FormData)) {
+            headers.set('Content-Type', 'application/json');
+        }
+
+        const res = await fetch(url, { ...(options || {}), headers });
+        const text = await res.text();
+        if (!res.ok) throw new Error(text || 'Request failed');
+        return text ? JSON.parse(text) : null;
+    }
+
+    function requireAdminSession() {
+        const user = getCurrentUser();
+        if (!user || !user.id) {
+            throw new Error('No active session. Please login first.');
+        }
+        adminIdentity.textContent = `Signed in as ${user.username || 'unknown'} (${user.role || 'USER'})`;
+        if (user.role !== 'ADMIN') {
+            throw new Error('Current account is not ADMIN.');
+        }
+        return user;
+    }
+
+    function renderKpis(data) {
+        const items = [
+            ['Total Users', data.totalUsers],
+            ['Active Users (15m)', data.activeUsersLast15Minutes],
+            ['Locked Users', data.lockedUsers],
+            ['Total Conversations', data.totalConversations],
+            ['Total Messages', data.totalMessages],
+            ['Reports Open', data.openReports],
+            ['Reports In Review', data.inReviewReports],
+            ['Reports Resolved', data.resolvedReports],
+            ['Reports Rejected', data.rejectedReports]
+        ];
+        kpiGrid.innerHTML = items.map(item => `
+            <div class="kpi">
+                <div class="muted">${item[0]}</div>
+                <strong>${item[1] ?? 0}</strong>
+            </div>
+        `).join('');
+    }
+
+    async function loadOverview() {
+        const data = await api('/api/admin/overview');
+        renderKpis(data || {});
+    }
+
+    function userRow(user) {
+        const lockAction = user.accountLocked
+            ? `<button data-action="unlock" data-id="${user.userId}">Unlock</button>`
+            : `<button class="danger" data-action="lock" data-id="${user.userId}">Lock</button>`;
+
+        return `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(user.displayName || user.username || '')}</strong><br/>
+                    <span class="muted">@${escapeHtml(user.username || '')}</span>
+                </td>
+                <td>
+                    <select data-action="role" data-id="${user.userId}">
+                        ${['USER','MODERATOR','ADMIN'].map(r => `<option value="${r}" ${r === user.role ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                </td>
+                <td>${user.accountLocked ? 'LOCKED' : 'ACTIVE'}</td>
+                <td>${lockAction}</td>
+            </tr>
+        `;
+    }
+
+    async function loadUsers() {
+        setStatus(usersStatus, 'Loading users...');
+        const query = (userQuery.value || '').trim();
+        const url = `/api/admin/users?limit=100${query ? `&query=${encodeURIComponent(query)}` : ''}`;
+        const users = await api(url);
+        usersTableBody.innerHTML = (users || []).map(userRow).join('');
+        setStatus(usersStatus, `Loaded ${(users || []).length} users.`, 'ok');
+    }
+
+    async function lockOrUnlockUser(userId, action) {
+        await api(`/api/admin/users/${encodeURIComponent(userId)}/${action}`, { method: 'PATCH' });
+        await Promise.all([loadUsers(), loadOverview(), loadAuditLogs()]);
+    }
+
+    async function changeRole(userId, role) {
+        await api(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+            method: 'PATCH',
+            body: JSON.stringify({ role })
+        });
+        await Promise.all([loadUsers(), loadAuditLogs()]);
+    }
+
+    async function loadPolicy() {
+        const policy = await api('/api/ai-policy');
+        document.getElementById('aiEnabled').value = String(Boolean(policy && policy.enabled));
+        document.getElementById('aiSystemPrompt').value = (policy && policy.systemPrompt) || '';
+        document.getElementById('aiProhibited').value = (policy && policy.prohibitedTopics) || '';
+        document.getElementById('aiMaxTokens').value = (policy && policy.maxTokens) || '';
+        document.getElementById('aiTemperature').value = (policy && policy.temperature) || '';
+        setStatus(policyStatus, 'Policy loaded.', 'ok');
+    }
+
+    async function savePolicy() {
+        const payload = {
+            enabled: document.getElementById('aiEnabled').value === 'true',
+            systemPrompt: document.getElementById('aiSystemPrompt').value,
+            prohibitedTopics: document.getElementById('aiProhibited').value,
+            maxTokens: document.getElementById('aiMaxTokens').value ? Number(document.getElementById('aiMaxTokens').value) : null,
+            temperature: document.getElementById('aiTemperature').value ? Number(document.getElementById('aiTemperature').value) : null
+        };
+        await api('/api/ai-policy', { method: 'PUT', body: JSON.stringify(payload) });
+        setStatus(policyStatus, 'Policy saved.', 'ok');
+        await loadAuditLogs();
+    }
+
+    function renderAuditRows(items) {
+        auditTableBody.innerHTML = (items || []).map(item => `
+            <tr>
+                <td>${escapeHtml(item.createdAt || '')}</td>
+                <td>${escapeHtml(item.action || '')}</td>
+                <td>${escapeHtml(item.actorUsername || '')}</td>
+                <td>${escapeHtml(item.targetUserId || '')}</td>
+                <td>${escapeHtml(item.details || '')}</td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadAuditLogs() {
+        setStatus(auditStatus, 'Loading audit logs...');
+        const rows = await api('/api/admin/audits?limit=100');
+        renderAuditRows(rows || []);
+        setStatus(auditStatus, `Loaded ${(rows || []).length} logs.`, 'ok');
+    }
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    usersTableBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const action = button.dataset.action;
+        const userId = button.dataset.id;
+        if (!userId) return;
+
+        try {
+            if (action === 'lock' || action === 'unlock') {
+                await lockOrUnlockUser(userId, action);
+            }
+        } catch (err) {
+            setStatus(usersStatus, err.message || 'Failed to update user.', 'error');
+        }
+    });
+
+    usersTableBody.addEventListener('change', async (event) => {
+        const select = event.target.closest('select[data-action="role"]');
+        if (!select) return;
+        const userId = select.dataset.id;
+        const role = select.value;
+
+        try {
+            await changeRole(userId, role);
+        } catch (err) {
+            setStatus(usersStatus, err.message || 'Failed to update role.', 'error');
+            await loadUsers();
+        }
+    });
+
+    document.getElementById('searchUsersBtn').addEventListener('click', () => loadUsers().catch(err => setStatus(usersStatus, err.message, 'error')));
+    document.getElementById('refreshUsersBtn').addEventListener('click', () => loadUsers().catch(err => setStatus(usersStatus, err.message, 'error')));
+    document.getElementById('reloadPolicyBtn').addEventListener('click', () => loadPolicy().catch(err => setStatus(policyStatus, err.message, 'error')));
+    document.getElementById('savePolicyBtn').addEventListener('click', () => savePolicy().catch(err => setStatus(policyStatus, err.message, 'error')));
+    document.getElementById('refreshAuditBtn').addEventListener('click', () => loadAuditLogs().catch(err => setStatus(auditStatus, err.message, 'error')));
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('accessToken');
+        location.href = '/auth.html';
+    });
+
+    (async () => {
+        try {
+            requireAdminSession();
+            await Promise.all([loadOverview(), loadUsers(), loadPolicy(), loadAuditLogs()]);
+            setStatus(accessStatus, 'Admin session ready.', 'ok');
+        } catch (err) {
+            setStatus(accessStatus, err.message || 'Admin access denied.', 'error');
+        }
+    })();
+</script>
+</body>
+</html>
+

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +17,16 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
     Optional<UserAccount> findByUsernameIgnoreCase(String username);
 
     List<UserAccount> findByFaceLoginEnabledTrueAndFaceTemplateHashIsNotNull();
+
+    long countByAccountLockedTrue();
+
+    long countByLastSeenAtAfter(Instant threshold);
+
+    List<UserAccount> findByUsernameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(
+            String username,
+            String displayName,
+            Pageable pageable
+    );
 
     @Query("""
             select u from UserAccount u

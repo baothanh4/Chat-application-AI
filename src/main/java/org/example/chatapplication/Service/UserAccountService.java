@@ -5,6 +5,7 @@ import org.example.chatapplication.DTO.Request.CreateUserRequest;
 import org.example.chatapplication.DTO.Request.ChangePasswordRequest;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
+import org.example.chatapplication.Model.Enum.UserRole;
 import org.example.chatapplication.Repository.UserAccountRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,10 @@ public class UserAccountService {
         user.setGender(trimToNull(request.getGender()));
         user.setEmail(request.getEmail());
         user.setAvatarPath(trimToNull(request.getAvatarPath()));
-        
+        if (user.getRole() == null) {
+            user.setRole(UserRole.USER);
+        }
+
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPasswordHash(passwordHasher.hash(request.getPassword().trim()));
         }
@@ -202,6 +206,8 @@ public class UserAccountService {
                 user.getFaceTemplatePath(),
                 user.isFaceLoginEnabled(),
                 user.getFaceEnrolledAt(),
+                user.getRole(),
+                user.isAccountLocked(),
                 presenceService.getPresence(user.getId())
         );
     }

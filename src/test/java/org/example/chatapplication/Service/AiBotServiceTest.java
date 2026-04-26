@@ -2,6 +2,7 @@ package org.example.chatapplication.Service;
 
 import org.example.chatapplication.Repository.ChatMessageRepository;
 import org.example.chatapplication.Repository.UserAccountRepository;
+import org.example.chatapplication.Model.Entity.GlobalAiPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,8 @@ class AiBotServiceTest {
     private ConversationService conversationService;
     @Mock
     private OfflineLlmService offlineLlmService;
+    @Mock
+    private GlobalAiPolicyService globalAiPolicyService;
 
     private AiBotService aiBotService;
 
@@ -39,8 +42,10 @@ class AiBotServiceTest {
                 conversationAiService,
                 conversationService,
                 chatMessageRepository,
-                offlineLlmService
+                offlineLlmService,
+                globalAiPolicyService
         );
+        when(globalAiPolicyService.getCurrentPolicy()).thenReturn(defaultGlobalPolicy());
         ReflectionTestUtils.setField(aiBotService, "botUsername", "ai-assistant");
         ReflectionTestUtils.setField(aiBotService, "localAiEnabled", true);
         ReflectionTestUtils.setField(aiBotService, "defaultTemperature", 0.7d);
@@ -85,6 +90,12 @@ class AiBotServiceTest {
         String reply = aiBotService.generateBotReply("Giai thich clean architecture", UUID.randomUUID());
 
         assertThat(reply).isEqualTo("Tra loi tu model offline");
+    }
+
+    private GlobalAiPolicy defaultGlobalPolicy() {
+        GlobalAiPolicy policy = new GlobalAiPolicy();
+        policy.setEnabled(true);
+        return policy;
     }
 }
 

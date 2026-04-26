@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chatapplication.DTO.Request.AuthLoginRequest;
 import org.example.chatapplication.DTO.Request.AuthRegisterRequest;
+import org.example.chatapplication.DTO.Response.AuthResponse;
 import org.example.chatapplication.DTO.Response.FaceLoginCandidateResponse;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
+import org.example.chatapplication.Model.Enum.UserRole;
 import org.example.chatapplication.Repository.UserAccountRepository;
 import org.example.chatapplication.Exception.FaceLoginAmbiguousException;
 import org.example.chatapplication.Exception.FaceEnrollmentConflictException;
@@ -34,6 +36,7 @@ public class AuthService {
     private final FileStorageService fileStorageService;
     private final FaceVerificationService faceVerificationService;
     private final PresenceService presenceService;
+    private final JwtService jwtService;
 
     @Transactional
     public UserResponse register(AuthRegisterRequest request) {
@@ -54,7 +57,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse login(AuthLoginRequest request) {
+    public AuthResponse login(AuthLoginRequest request) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(request.getUsername().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
@@ -62,12 +65,15 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
+        assertAccountNotLocked(user);
+
         presenceService.markOnline(user.getId());
-        return userAccountService.toResponse(userAccountRepository.findById(user.getId()).orElse(user));
+        UserAccount refreshedUser = userAccountRepository.findById(user.getId()).orElse(user);
+        return buildAuthResponse(refreshedUser);
     }
 
     @Transactional
-    public UserResponse loginWithFace(MultipartFile faceImage) {
+    public AuthResponse loginWithFace(MultipartFile faceImage) {
         String scannedSignature = faceVerificationService.generateSignature(faceImage);
         List<UserAccount> candidates = userAccountRepository.findByFaceLoginEnabledTrueAndFaceTemplateHashIsNotNull();
         List<FaceMatch> rankedMatches = candidates.stream()
@@ -116,12 +122,15 @@ public class AuthService {
             log.debug("Face scan matched. userId={}, username={}, distance={}", bestMatch.user().getId(), bestMatch.user().getUsername(), bestMatch.distance());
         }
 
+        assertAccountNotLocked(bestMatch.user());
+
         presenceService.markOnline(bestMatch.user().getId());
-        return userAccountService.toResponse(userAccountRepository.findById(bestMatch.user().getId()).orElse(bestMatch.user()));
+        UserAccount refreshedUser = userAccountRepository.findById(bestMatch.user().getId()).orElse(bestMatch.user());
+        return buildAuthResponse(refreshedUser);
     }
 
     @Transactional
-    public UserResponse confirmFaceLogin(MultipartFile faceImage, UUID selectedUserId) {
+    public AuthResponse confirmFaceLogin(MultipartFile faceImage, UUID selectedUserId) {
         if (selectedUserId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected user is required");
         }
@@ -139,8 +148,11 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Selected account does not match the scanned face");
         }
 
+        assertAccountNotLocked(selectedUser);
+
         presenceService.markOnline(selectedUser.getId());
-        return userAccountService.toResponse(userAccountRepository.findById(selectedUser.getId()).orElse(selectedUser));
+        UserAccount refreshedUser = userAccountRepository.findById(selectedUser.getId()).orElse(selectedUser);
+        return buildAuthResponse(refreshedUser);
     }
 
     private String trimToNull(String value) {
@@ -170,7 +182,25 @@ public class AuthService {
         user.setAvatarPath(trimToNull(request.getAvatarPath()));
         user.setPasswordHash(passwordHasher.hash(request.getPassword()));
         user.setFaceLoginEnabled(false);
+        user.setRole(UserRole.USER);
+        user.setAccountLocked(false);
         return user;
+    }
+
+    private void assertAccountNotLocked(UserAccount user) {
+        if (user != null && user.isAccountLocked()) {
+            throw new ResponseStatusException(HttpStatus.LOCKED, "Account is locked");
+        }
+    }
+
+    private AuthResponse buildAuthResponse(UserAccount user) {
+        String token = jwtService.generateToken(user);
+        return new AuthResponse(
+                token,
+                "Bearer",
+                jwtService.extractExpiration(token).toEpochMilli(),
+                userAccountService.toResponse(user)
+        );
     }
 
     private void ensureFaceIsUnique(String candidateSignature) {

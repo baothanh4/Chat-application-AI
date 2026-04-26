@@ -3,10 +3,13 @@ package org.example.chatapplication.Model.Entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.example.chatapplication.Model.Enum.UserRole;
 
 import java.time.LocalDate;
 import java.time.Instant;
@@ -63,6 +66,13 @@ public class UserAccount extends BaseEntity{
     @Column(name = "face_login_enabled", nullable = false)
     private Boolean faceLoginEnabled = Boolean.FALSE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
+
+    @Column(name = "account_locked", nullable = false)
+    private Boolean accountLocked = Boolean.FALSE;
+
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
@@ -72,5 +82,13 @@ public class UserAccount extends BaseEntity{
 
     public void setFaceLoginEnabled(Boolean faceLoginEnabled) {
         this.faceLoginEnabled = Boolean.TRUE.equals(faceLoginEnabled);
+    }
+
+    public boolean isAccountLocked() {
+        return Boolean.TRUE.equals(accountLocked);
+    }
+
+    public void setAccountLocked(Boolean accountLocked) {
+        this.accountLocked = Boolean.TRUE.equals(accountLocked);
     }
 }
