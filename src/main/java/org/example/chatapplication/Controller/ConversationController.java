@@ -6,10 +6,14 @@ import org.example.chatapplication.DTO.Request.CreateGroupConversationRequest;
 import org.example.chatapplication.DTO.Request.CreatePrivateConversationRequest;
 import org.example.chatapplication.DTO.Request.MarkConversationReadRequest;
 import org.example.chatapplication.DTO.Request.UpdateConversationAiConfigRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationMuteRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationNicknameRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationSettingsRequest;
 import org.example.chatapplication.DTO.Response.ConversationAiConfigResponse;
 import org.example.chatapplication.DTO.Response.ConversationInboxItemResponse;
 import org.example.chatapplication.DTO.Response.ConversationMessagesResponse;
 import org.example.chatapplication.DTO.Response.ConversationResponse;
+import org.example.chatapplication.DTO.Response.ConversationSettingsResponse;
 import org.example.chatapplication.DTO.Response.MessageHistoryResponse;
 import org.example.chatapplication.Service.ChatMessageService;
 import org.example.chatapplication.Service.ConversationService;
@@ -83,5 +87,30 @@ public class ConversationController {
     ResponseEntity<ConversationAiConfigResponse> updateAiConfig(@PathVariable UUID conversationId,
                                                                 @RequestBody @Valid UpdateConversationAiConfigRequest request) {
         return ResponseEntity.ok(conversationService.updateAiConfig(conversationId, request));
+    }
+
+    @GetMapping("/{conversationId}/settings")
+    ResponseEntity<ConversationSettingsResponse> getSettings(@PathVariable UUID conversationId,
+                                                             @RequestParam UUID userId) {
+        return ResponseEntity.ok(conversationService.getSettings(conversationId, userId));
+    }
+
+    @PutMapping("/{conversationId}/settings")
+    ResponseEntity<ConversationSettingsResponse> updateSettings(@PathVariable UUID conversationId,
+                                                                @RequestBody @Valid UpdateConversationSettingsRequest request) {
+        return ResponseEntity.ok(conversationService.updateSettings(conversationId, request));
+    }
+
+    @PutMapping("/{conversationId}/mute")
+    ResponseEntity<ConversationSettingsResponse> updateMute(@PathVariable UUID conversationId,
+                                                            @RequestBody @Valid UpdateConversationMuteRequest request) {
+        return ResponseEntity.ok(conversationService.updateMute(conversationId, request));
+    }
+
+    @PutMapping("/{conversationId}/members/{targetUserId}/nickname")
+    ResponseEntity<ConversationSettingsResponse> updateNickname(@PathVariable UUID conversationId,
+                                                                @PathVariable UUID targetUserId,
+                                                                @RequestBody @Valid UpdateConversationNicknameRequest request) {
+        return ResponseEntity.ok(conversationService.updateMemberNickname(conversationId, targetUserId, request));
     }
 }

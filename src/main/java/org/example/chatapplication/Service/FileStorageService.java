@@ -17,6 +17,7 @@ public class FileStorageService {
     private static final Path AVATAR_DIR = Paths.get("uploads", "avatars");
     private static final Path CHAT_IMAGE_DIR = Paths.get("uploads", "chat-images");
     private static final Path CHAT_VIDEO_DIR = Paths.get("uploads", "chat-videos");
+    private static final Path CHAT_FILE_DIR = Paths.get("uploads", "chat-files");
     private static final Path FACE_TEMPLATE_DIR = Paths.get("uploads", "face-templates");
 
     public String storeAvatar(MultipartFile file) {
@@ -64,6 +65,22 @@ public class FileStorageService {
             return "/uploads/chat-videos/" + filename;
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to store chat video file", ex);
+        }
+    }
+
+    public String storeChatFile(MultipartFile file) {
+        validateFile(file);
+        try {
+            Files.createDirectories(CHAT_FILE_DIR);
+            String extension = getExtension(file.getOriginalFilename());
+            String filename = UUID.randomUUID() + extension;
+            Path target = CHAT_FILE_DIR.resolve(filename).normalize();
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, target);
+            }
+            return "/uploads/chat-files/" + filename;
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to store chat file", ex);
         }
     }
 
@@ -121,6 +138,12 @@ public class FileStorageService {
 
     private boolean isAllowedContentType(String contentType, String prefix) {
         return contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith(prefix);
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required");
+        }
     }
 
     private boolean hasAllowedExtension(MultipartFile file, String... extensions) {

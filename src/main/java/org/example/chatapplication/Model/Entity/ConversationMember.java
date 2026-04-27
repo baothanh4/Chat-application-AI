@@ -36,4 +36,7 @@ public class ConversationMember extends BaseEntity{
 
     @Column(nullable = false)
     private boolean muted = false;
+
+    @Column(length = 120)
+    private String nickname;
 }

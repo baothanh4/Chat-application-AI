@@ -2,11 +2,16 @@ package org.example.chatapplication.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.DTO.Request.CreateGroupConversationRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationMuteRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationNicknameRequest;
+import org.example.chatapplication.DTO.Request.UpdateConversationSettingsRequest;
 import org.example.chatapplication.DTO.Request.CreatePrivateConversationRequest;
 import org.example.chatapplication.DTO.Request.UpdateConversationAiConfigRequest;
 import org.example.chatapplication.DTO.Response.ChatMessageResponse;
 import org.example.chatapplication.DTO.Response.ConversationAiConfigResponse;
+import org.example.chatapplication.DTO.Response.ConversationMemberSettingResponse;
 import org.example.chatapplication.DTO.Response.ConversationResponse;
+import org.example.chatapplication.DTO.Response.ConversationSettingsResponse;
 import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.ChatMessage;
 import org.example.chatapplication.Model.Entity.Conversation;
@@ -117,6 +122,77 @@ public class ConversationService {
     }
 
     @Transactional(readOnly = true)
+    public ConversationSettingsResponse getSettings(UUID conversationId, UUID userId) {
+        requireMemberAccess(conversationId, userId);
+        Conversation conversation = requireConversation(conversationId);
+        return toSettingsResponse(conversation);
+    }
+
+    @Transactional
+    public ConversationSettingsResponse updateSettings(UUID conversationId, UpdateConversationSettingsRequest request) {
+        ConversationMember actor = requireMember(conversationId, request.getUserId());
+        Conversation conversation = requireConversation(conversationId);
+
+        boolean touchesGroupIdentity = request.getName() != null || request.getDescription() != null || request.getAvatarPath() != null;
+        if (touchesGroupIdentity && conversation.getType() == ConversationType.GROUP && actor.getRole() != ConversationRole.OWNER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the group owner can update group identity");
+        }
+
+        if (request.getName() != null) {
+            String name = request.getName().trim();
+            if (name.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conversation name must not be blank");
+            }
+            conversation.setName(name);
+        }
+        if (request.getDescription() != null) {
+            conversation.setDescription(trimToNull(request.getDescription()));
+        }
+        if (request.getAvatarPath() != null) {
+            conversation.setAvatarPath(trimToNull(request.getAvatarPath()));
+        }
+        if (request.getThemeColor() != null) {
+            conversation.setThemeColor(trimToNull(request.getThemeColor()));
+        }
+        if (request.getQuickReactionEmoji() != null) {
+            conversation.setQuickReactionEmoji(trimToNull(request.getQuickReactionEmoji()));
+        }
+        if (request.getReadReceiptEnabled() != null) {
+            conversation.setReadReceiptEnabled(request.getReadReceiptEnabled());
+        }
+        if (request.getDisappearingMessagesSeconds() != null) {
+            conversation.setDisappearingMessagesSeconds(request.getDisappearingMessagesSeconds());
+        }
+
+        Conversation saved = conversationRepository.save(conversation);
+        return toSettingsResponse(saved);
+    }
+
+    @Transactional
+    public ConversationSettingsResponse updateMemberNickname(UUID conversationId, UUID targetUserId, UpdateConversationNicknameRequest request) {
+        ConversationMember actor = requireMember(conversationId, request.getActorUserId());
+        ConversationMember target = requireMember(conversationId, targetUserId);
+
+        boolean editingSelf = actor.getUser().getId().equals(targetUserId);
+        boolean ownerEditingOthers = actor.getRole() == ConversationRole.OWNER;
+        if (!editingSelf && !ownerEditingOthers) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only owner can edit other members' nicknames");
+        }
+
+        target.setNickname(trimToNull(request.getNickname()));
+        conversationMemberRepository.save(target);
+        return toSettingsResponse(target.getConversation());
+    }
+
+    @Transactional
+    public ConversationSettingsResponse updateMute(UUID conversationId, UpdateConversationMuteRequest request) {
+        ConversationMember member = requireMember(conversationId, request.getUserId());
+        member.setMuted(request.isMuted());
+        conversationMemberRepository.save(member);
+        return toSettingsResponse(member.getConversation());
+    }
+
+    @Transactional(readOnly = true)
     public ConversationAiConfigResponse getAiConfig(UUID conversationId, UUID userId) {
         requireMemberAccess(conversationId, userId);
         Conversation conversation = requireConversation(conversationId);
@@ -195,6 +271,10 @@ public class ConversationService {
         item.put("description", conversation.getDescription());
         item.put("archived", conversation.isArchived());
         item.put("avatarPath", conversation.getAvatarPath());
+        item.put("themeColor", conversation.getThemeColor());
+        item.put("quickReactionEmoji", conversation.getQuickReactionEmoji());
+        item.put("readReceiptEnabled", conversation.isReadReceiptEnabled());
+        item.put("disappearingMessagesSeconds", conversation.getDisappearingMessagesSeconds());
         item.put("members", memberSummaries);
         item.put("latestMessage", latestMessage);
         item.put("latestSender", latestMessageEntity == null ? null : buildUserMap(latestMessageEntity.getSender()));
@@ -260,6 +340,14 @@ public class ConversationService {
         }
     }
 
+    private ConversationMember requireMember(UUID conversationId, UUID userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
+        }
+        return conversationMemberRepository.findByConversationIdAndUserId(conversationId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of this conversation"));
+    }
+
     private ConversationAiConfigResponse toAiConfigResponse(Conversation conversation, UUID userId) {
         return new ConversationAiConfigResponse(
                 conversation.getId(),
@@ -274,6 +362,43 @@ public class ConversationService {
     }
 
     private String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private ConversationSettingsResponse toSettingsResponse(Conversation conversation) {
+        List<ConversationMemberSettingResponse> members = conversationMemberRepository.findByConversationId(conversation.getId()).stream()
+                .map(this::toMemberSettingsResponse)
+                .toList();
+        return new ConversationSettingsResponse(
+                conversation.getId(),
+                conversation.getName(),
+                conversation.getDescription(),
+                conversation.getAvatarPath(),
+                conversation.getThemeColor(),
+                conversation.getQuickReactionEmoji(),
+                conversation.isReadReceiptEnabled(),
+                conversation.getDisappearingMessagesSeconds() == null ? 0 : conversation.getDisappearingMessagesSeconds(),
+                members,
+                conversation.getUpdatedAt()
+        );
+    }
+
+    private ConversationMemberSettingResponse toMemberSettingsResponse(ConversationMember member) {
+        return new ConversationMemberSettingResponse(
+                member.getUser().getId(),
+                member.getUser().getUsername(),
+                member.getUser().getDisplayName(),
+                member.getNickname(),
+                member.isMuted(),
+                member.getLastReadAt()
+        );
+    }
+
+    private String trimToNull(String value) {
         if (value == null) {
             return null;
         }

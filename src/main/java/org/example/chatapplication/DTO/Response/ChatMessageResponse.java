@@ -8,6 +8,7 @@ import org.example.chatapplication.Model.Enum.MessageType;
 
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -21,6 +22,18 @@ public class ChatMessageResponse {
     MessageStatus status;
     String content;
     String clientMessageId;
+    UUID replyToMessageId;
+    boolean edited;
+    Instant editedAt;
+    boolean unsent;
+    Instant unsentAt;
+    boolean deletedForEveryone;
+    Instant deletedAt;
+    UUID deletedByUserId;
+    boolean pinned;
+    Instant pinnedAt;
+    UUID pinnedByUserId;
+    List<MessageReactionSummaryResponse> reactions;
     Instant createdAt;
     Instant deliveredAt;
     Instant readAt;

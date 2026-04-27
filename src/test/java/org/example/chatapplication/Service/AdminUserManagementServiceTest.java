@@ -1,6 +1,10 @@
 package org.example.chatapplication.Service;
 
+import org.example.chatapplication.DTO.Request.AdminCreateUserRequest;
+import org.example.chatapplication.DTO.Request.AdminUpdateUserRequest;
+import org.example.chatapplication.DTO.Response.AdminUserDetailResponse;
 import org.example.chatapplication.DTO.Response.AdminUserStatusResponse;
+import org.example.chatapplication.Model.Enum.AdminAuditAction;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Model.Enum.UserRole;
 import org.example.chatapplication.Repository.UserAccountRepository;
@@ -30,6 +34,9 @@ class AdminUserManagementServiceTest {
 
     @Mock
     private AdminAuditService adminAuditService;
+
+    @Mock
+    private PasswordHasher passwordHasher;
 
     @InjectMocks
     private AdminUserManagementService adminUserManagementService;
@@ -70,6 +77,87 @@ class AdminUserManagementServiceTest {
         when(userAccountRepository.findById(userId)).thenReturn(Optional.of(admin));
 
         assertThatThrownBy(() -> adminUserManagementService.updateUserRole(userId, UserRole.MODERATOR, "admin"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseException = (ResponseStatusException) ex;
+                    assertThat(responseException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+    }
+
+    @Test
+    void createUserShouldHashPasswordAndApplyDefaults() {
+        AdminCreateUserRequest request = new AdminCreateUserRequest(
+                "newuser",
+                "New User",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "new@example.com",
+                null,
+                "123456",
+                null,
+                null
+        );
+
+        when(userAccountRepository.findByUsernameIgnoreCase("newuser")).thenReturn(Optional.empty());
+        when(passwordHasher.hash("123456")).thenReturn("hashed-password");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> {
+            UserAccount saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        AdminUserDetailResponse response = adminUserManagementService.createUser(request, "admin");
+
+        assertThat(response.getUsername()).isEqualTo("newuser");
+        assertThat(response.isAccountLocked()).isFalse();
+        assertThat(response.getRole()).isEqualTo(UserRole.USER);
+        verify(adminAuditService).log(eq(AdminAuditAction.USER_CREATED), eq("admin"), any(), any());
+    }
+
+    @Test
+    void updateUserShouldRejectDuplicateUsername() {
+        UUID targetUserId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        UserAccount target = user(targetUserId, "target", UserRole.USER, false);
+        UserAccount another = user(anotherUserId, "taken", UserRole.USER, false);
+        when(userAccountRepository.findById(targetUserId)).thenReturn(Optional.of(target));
+        when(userAccountRepository.findByUsernameIgnoreCase("taken")).thenReturn(Optional.of(another));
+
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest(
+                "taken",
+                "Target",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> adminUserManagementService.updateUser(targetUserId, request, "admin"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseException = (ResponseStatusException) ex;
+                    assertThat(responseException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                });
+    }
+
+    @Test
+    void deleteUserShouldRejectSelfDelete() {
+        UUID userId = UUID.randomUUID();
+        UserAccount admin = user(userId, "admin", UserRole.ADMIN, false);
+        when(userAccountRepository.findById(userId)).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserManagementService.deleteUser(userId, "admin"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> {
                     ResponseStatusException responseException = (ResponseStatusException) ex;

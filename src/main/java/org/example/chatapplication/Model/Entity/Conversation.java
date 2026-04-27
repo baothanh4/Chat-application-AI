@@ -31,6 +31,18 @@ public class Conversation extends BaseEntity {
     @Column(length = 500)
     private String avatarPath;
 
+    @Column(length = 32)
+    private String themeColor = "#0084ff";
+
+    @Column(length = 16)
+    private String quickReactionEmoji = "👍";
+
+    @Column(nullable = false)
+    private boolean readReceiptEnabled = true;
+
+    @Column(nullable = false)
+    private Integer disappearingMessagesSeconds = 0;
+
     @Column(length = 4000)
     private String aiSystemPrompt;
 

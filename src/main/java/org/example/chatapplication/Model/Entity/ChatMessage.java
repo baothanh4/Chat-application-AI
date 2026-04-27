@@ -8,6 +8,9 @@ import org.example.chatapplication.Model.Enum.MessageType;
 import org.example.chatapplication.Model.Entity.UserAccount;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -39,7 +42,36 @@ public class ChatMessage extends BaseEntity{
     @Column(length = 100)
     private String clientMessageId;
 
+    @Column(name = "reply_to_message_id")
+    private UUID replyToMessageId;
+
+    private boolean edited = false;
+
+    private Instant editedAt;
+
+    private boolean unsent = false;
+
+    private Instant unsentAt;
+
+    private boolean deletedForEveryone = false;
+
+    private Instant deletedAt;
+
+    @Column(name = "deleted_by_user_id")
+    private UUID deletedByUserId;
+
+    private boolean pinned = false;
+
+    private Instant pinnedAt;
+
+    @Column(name = "pinned_by_user_id")
+    private UUID pinnedByUserId;
+
     private Instant deliveredAt;
 
     private Instant readAt;
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private Set<MessageReaction> reactions = new LinkedHashSet<>();
 }
