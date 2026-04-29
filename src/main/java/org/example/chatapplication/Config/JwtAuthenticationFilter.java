@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.chatapplication.Service.CustomUserDetailsService;
 import org.example.chatapplication.Service.JwtService;
+import org.example.chatapplication.Service.SessionRevocationService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final SessionRevocationService sessionRevocationService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -46,6 +48,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             if (userDetails.isAccountNonLocked() && jwtService.isTokenValid(jwt, userDetails)) {
+                java.util.UUID uid = jwtService.extractUserId(jwt);
+                if (uid != null) {
+                    java.time.Instant issuedAt = jwtService.extractIssuedAt(jwt);
+                    java.util.Optional<java.time.Instant> revokedAt = sessionRevocationService.getRevokedAt(uid);
+                    if (revokedAt.isPresent() && !issuedAt.isAfter(revokedAt.get())) {
+                        // token was issued at or before revocation time -> treat as invalid
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                }
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

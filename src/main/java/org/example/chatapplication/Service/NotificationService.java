@@ -2,6 +2,7 @@ package org.example.chatapplication.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chatapplication.Model.Entity.Broadcast;
 import org.example.chatapplication.Model.Entity.ChatMessage;
 import org.example.chatapplication.Model.Entity.Conversation;
 import org.example.chatapplication.Model.Entity.DeviceToken;
@@ -34,6 +35,15 @@ public class NotificationService {
             log.info("Push notification ready for {} via {} token {} | payload={}",
                     recipient.getUsername(), token.getPlatform(), maskToken(token.getToken()), payload);
         }
+    }
+
+    public void sendBroadcastNotification(Broadcast broadcast) {
+        String payload = String.format("Broadcast: %s - %s", broadcast.getTitle(), broadcast.getMessage());
+        log.info("Broadcasting system announcement: {}", payload);
+        // In real implementation, this would:
+        // - Fetch all active device tokens for all users
+        // - Queue notification delivery via push provider (Firebase, APNs, etc.)
+        // - Track delivery status
     }
 
     private String maskToken(String token) {

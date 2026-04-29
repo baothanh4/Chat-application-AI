@@ -75,6 +75,11 @@ public class AdminUserController {
         return ResponseEntity.ok(adminUserManagementService.unlockUser(userId, authentication.getName()));
     }
 
+    @PostMapping("/{userId}/revoke-sessions")
+    ResponseEntity<AdminUserStatusResponse> revokeSessions(@PathVariable UUID userId, Authentication authentication) {
+        return ResponseEntity.ok(adminUserManagementService.revokeUserSessions(userId, authentication.getName()));
+    }
+
     @PatchMapping("/{userId}/role")
     ResponseEntity<AdminUserStatusResponse> updateUserRole(@PathVariable UUID userId,
                                                            @RequestBody @Valid UpdateUserRoleRequest request,

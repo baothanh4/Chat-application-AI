@@ -51,10 +51,25 @@ public class JwtService {
         return expiration == null ? Instant.EPOCH : expiration.toInstant();
     }
 
+    public Instant extractIssuedAt(String token) {
+        Date issuedAt = extractAllClaims(token).getIssuedAt();
+        return issuedAt == null ? Instant.EPOCH : issuedAt.toInstant();
+    }
+
     public boolean isTokenValid(String token, UserDetails userDetails) {
         String username = extractUsername(token);
         return username.equalsIgnoreCase(userDetails.getUsername())
                 && extractExpiration(token).isAfter(Instant.now());
+    }
+
+    public java.util.UUID extractUserId(String token) {
+        Object uid = extractAllClaims(token).get("uid");
+        if (uid == null) return null;
+        try {
+            return java.util.UUID.fromString(uid.toString());
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private Claims extractAllClaims(String token) {

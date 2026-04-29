@@ -28,6 +28,7 @@ public class AdminUserManagementService {
     private final UserAccountRepository userAccountRepository;
     private final AdminAuditService adminAuditService;
     private final PasswordHasher passwordHasher;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional(readOnly = true)
     public List<AdminUserSummaryResponse> listUsers(String query, int limit) {
@@ -168,6 +169,14 @@ public class AdminUserManagementService {
         UserAccount saved = userAccountRepository.save(user);
         adminAuditService.log(AdminAuditAction.USER_UNLOCKED, actorUsername, saved.getId(), "Unlocked account: " + saved.getUsername());
         return toResponse(saved, "User account has been unlocked");
+    }
+
+    @Transactional
+    public AdminUserStatusResponse revokeUserSessions(UUID userId, String actorUsername) {
+        UserAccount user = requireUser(userId);
+        sessionRevocationService.revokeSessionsForUser(user.getId());
+        adminAuditService.log(AdminAuditAction.USER_SESSIONS_REVOKED, actorUsername, user.getId(), "Revoked sessions for: " + user.getUsername());
+        return toResponse(user, "User sessions have been revoked");
     }
 
     @Transactional
