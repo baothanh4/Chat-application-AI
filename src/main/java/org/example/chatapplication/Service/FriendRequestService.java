@@ -29,6 +29,7 @@ public class FriendRequestService {
     private final UserDirectoryService userDirectoryService;
     private final ConversationService conversationService;
     private final PresenceService presenceService;
+    private final ChatMessageService chatMessageService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
@@ -72,6 +73,10 @@ public class FriendRequestService {
         saveFriendship(sender.getId(), recipient.getId(), friendRequest.getId(), conversationId);
 
         FriendRequestResponse response = toResponse(friendRequest, recipient.getId());
+
+        // Send system message to notify friendship
+        chatMessageService.sendSystemMessage(conversationId, recipient.getId(), "Các bạn đã trở thành bạn bè! Hãy bắt đầu trò chuyện.");
+
         publishFriendEvent(sender.getId(), recipient.getId(), response);
         return response;
     }

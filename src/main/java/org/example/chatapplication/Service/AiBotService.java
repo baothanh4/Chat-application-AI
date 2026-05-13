@@ -33,7 +33,7 @@ public class AiBotService {
     private final ConversationAiService conversationAiService;
     private final ConversationService conversationService;
     private final ChatMessageRepository chatMessageRepository;
-    private final OfflineLlmService offlineLlmService;
+    private final AiInferenceService aiInferenceService;
     private final GlobalAiPolicyService globalAiPolicyService;
 
     @Value("${chatbot.bot-username:ai-assistant}")
@@ -54,13 +54,13 @@ public class AiBotService {
                         ConversationAiService conversationAiService,
                         ConversationService conversationService,
                         ChatMessageRepository chatMessageRepository,
-                        OfflineLlmService offlineLlmService,
+                        AiInferenceService aiInferenceService,
                         GlobalAiPolicyService globalAiPolicyService) {
         this.userAccountRepository = userAccountRepository;
         this.conversationAiService = conversationAiService;
         this.conversationService = conversationService;
         this.chatMessageRepository = chatMessageRepository;
-        this.offlineLlmService = offlineLlmService;
+        this.aiInferenceService = aiInferenceService;
         this.globalAiPolicyService = globalAiPolicyService;
     }
 
@@ -146,7 +146,7 @@ public class AiBotService {
                 : defaultMaxTokens;
         maxTokens = resolveEffectiveMaxTokens(maxTokens, globalPolicy.getMaxTokens());
 
-        Optional<String> modelReply = offlineLlmService.generateWithOllama(prompt, temperature, maxTokens);
+        Optional<String> modelReply = aiInferenceService.generate(prompt, temperature, maxTokens);
         if (modelReply.isPresent()) {
             return modelReply.get();
         }
@@ -223,11 +223,13 @@ public class AiBotService {
                     .getContent()
                     .stream()
                     .filter(m -> m.getContent() != null && !m.getContent().isBlank())
-                    .filter(m -> !isBotUser(m.getSender().getId()))
                     .map(m -> {
                         String sender = m.getSender().getDisplayName() != null
                                 ? m.getSender().getDisplayName()
                                 : m.getSender().getUsername();
+                        if (isBotUser(m.getSender().getId())) {
+                            sender = "AI Assistant";
+                        }
                         return sender + ": " + m.getContent();
                     })
                     .collect(Collectors.toList());
@@ -310,9 +312,10 @@ public class AiBotService {
         return "AI Assistant (Offline Model) - Lenh nhanh:\n"
                 + "- tom tat: tong hop noi dung cuoc tro chuyen\n"
                 + "- task: liet ke task + deadline\n"
+                + "- tong hop: phan tich chuyen sau ve cong viec va phan cong\n"
                 + "- hoi tu do: hoi kien thuc chung, lap trinh, viet noi dung, dich thuat\n"
                 + "- help: hien tro giup\n\n"
-                + "Model offline hien tai: " + offlineLlmService.getOllamaModel();
+                + "Model hien tai: " + aiInferenceService.getActiveModelName();
     }
 
     private boolean isVietnamTimeQuestion(String text) {

@@ -36,6 +36,11 @@ public class AiInsightController {
         return ResponseEntity.ok(conversationAiService.listTasksForConversation(conversationId));
     }
 
+    @GetMapping("/conversations/{conversationId}/work-summary")
+    public ResponseEntity<String> getWorkSummary(@PathVariable UUID conversationId) {
+        return ResponseEntity.ok(conversationAiService.getWorkSummary(conversationId));
+    }
+
     @GetMapping("/users/{userId}/tasks")
     public ResponseEntity<List<ConversationAiTaskResponse>> listUserTasks(@PathVariable UUID userId) {
         return ResponseEntity.ok(conversationAiService.listTasksForUser(userId));

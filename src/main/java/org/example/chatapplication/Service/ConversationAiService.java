@@ -63,7 +63,7 @@ public class ConversationAiService {
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationAiInsightRepository insightRepository;
     private final ConversationTaskInsightRepository taskRepository;
-    private final OfflineLlmService offlineLlmService;
+    private final AiInferenceService aiInferenceService;
     private final ObjectMapper objectMapper;
     private final Clock clock = Clock.systemDefaultZone();
 
@@ -88,7 +88,7 @@ public class ConversationAiService {
             AnalysisResult llmResult = analyzeConversationWithLlm(conversation, messages);
             if (llmResult != null) {
                 analysis = llmResult;
-                modelName = "ollama-" + offlineLlmService.getOllamaModel();
+                modelName = aiInferenceService.getActiveModelName();
             } else {
                 analysis = analyzeConversation(conversation, messages);
             }
@@ -144,6 +144,39 @@ public class ConversationAiService {
                         .sorted(this::compareTaskResponses)
                         .toList())
                 .orElseGet(List::of);
+    }
+
+    @Transactional
+    public String getWorkSummary(UUID conversationId) {
+        Conversation conversation = conversationService.requireConversation(conversationId);
+        List<ChatMessage> messages = loadRecentMessages(conversationId);
+        
+        if (messages.isEmpty()) {
+            return "Chưa có đủ tin nhắn để tổng hợp công việc.";
+        }
+
+        StringBuilder chatContext = new StringBuilder();
+        for (ChatMessage m : messages) {
+            String sender = m.getSender() != null ? m.getSender().getDisplayName() : "Unknown";
+            chatContext.append(sender).append(": ").append(m.getContent()).append("\n");
+        }
+
+        String prompt = """
+                Bạn là một trợ lý quản lý dự án chuyên nghiệp. 
+                Hãy phân tích đoạn hội thoại dưới đây (bao gồm cả các thảo luận với AI assistant) và tổng hợp công việc theo các mục:
+                1. Tóm tắt tiến độ hiện tại.
+                2. Danh sách các đầu việc (Tasks) cần làm, người phụ trách và deadline (nếu có).
+                3. Các vấn đề cần lưu ý hoặc rủi ro.
+                4. Đề xuất hành động tiếp theo.
+
+                Đoạn hội thoại:
+                %s
+
+                Yêu cầu: Trình bày chuyên nghiệp bằng tiếng Việt, sử dụng Markdown (bullet points, bold text).
+                """.formatted(chatContext.toString());
+
+        return aiInferenceService.generate(prompt, 0.4, 2048)
+                .orElse("Không thể tạo tổng hợp công việc lúc này. Vui lòng kiểm tra cấu hình OpenRouter API hoặc Ollama.");
     }
 
     private List<ChatMessage> loadRecentMessages(UUID conversationId) {
@@ -243,7 +276,7 @@ public class ConversationAiService {
                 """.formatted(chatContext.toString());
 
         log.info("Requesting LLM analysis for conversation {}", conversation.getId());
-        Optional<String> response = offlineLlmService.generateWithOllama(prompt, 0.2, 1024);
+        Optional<String> response = aiInferenceService.generate(prompt, 0.2, 1024);
 
         if (response.isEmpty()) {
             log.warn("LLM analysis returned empty response for conversation {}", conversation.getId());
