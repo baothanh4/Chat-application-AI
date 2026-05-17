@@ -7,11 +7,11 @@ import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Model.Enum.UserRole;
 import org.example.chatapplication.Repository.UserAccountRepository;
+import org.example.chatapplication.Exception.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
@@ -50,7 +50,7 @@ public class UserAccountService {
         try {
             return userAccountRepository.save(user);
         } catch (DataIntegrityViolationException ex) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists", ex);
+            throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS);
         }
     }
 
@@ -77,19 +77,19 @@ public class UserAccountService {
         String confirmNewPassword = trimToNull(request.getConfirmNewPassword());
 
         if (oldPassword == null || newPassword == null || confirmNewPassword == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Old password, new password and confirmation are required");
+            throw new AppException(ErrorCode.INVALID_INPUT, "Old password, new password and confirmation are required");
         }
 
         if (user.getPasswordHash() == null || !passwordHasher.matches(oldPassword, user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Old password is incorrect");
+            throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         if (!newPassword.equals(confirmNewPassword)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password confirmation does not match");
+            throw new AppException(ErrorCode.INVALID_INPUT, "New password confirmation does not match");
         }
 
         if (newPassword.equals(oldPassword)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from old password");
+            throw new AppException(ErrorCode.INVALID_INPUT, "New password must be different from old password");
         }
 
         user.setPasswordHash(passwordHasher.hash(newPassword));
@@ -107,7 +107,7 @@ public class UserAccountService {
     public UserAccount enableFaceLogin(UUID userId) {
         UserAccount user = requireUser(userId);
         if (!hasFaceEnrollment(user)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No face template exists to enable FaceID");
+            throw new AppException(ErrorCode.INVALID_INPUT, "No face template exists to enable FaceID");
         }
 
         user.setFaceLoginEnabled(Boolean.TRUE);
@@ -134,7 +134,7 @@ public class UserAccountService {
 
     public UserAccount applyFaceEnrollment(UserAccount user, MultipartFile faceImage, boolean enableFaceLogin) {
         if (user == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw ResourceNotFoundException.userNotFound();
         }
 
         String faceSignature = faceVerificationService.generateSignature(faceImage);
@@ -157,10 +157,10 @@ public class UserAccountService {
     @Transactional(readOnly = true)
     public UserAccount authenticate(String username, String password) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS));
         
         if (user.getPasswordHash() == null || !passwordHasher.matches(password, user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+            throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS);
         }
         return user;
     }
@@ -168,7 +168,7 @@ public class UserAccountService {
     @Transactional(readOnly = true)
     public UserAccount requireUser(UUID userId) {
         return userAccountRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.USER_NOT_FOUND));
     }
 
     @Transactional
@@ -218,7 +218,7 @@ public class UserAccountService {
                 .filter(existing -> faceVerificationService.distance(resolveStoredFaceSignature(existing), candidateSignature) <= 140)
                 .findFirst()
                 .ifPresent(conflict -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "This face is already enrolled for another account");
+                    throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, "This face is already enrolled for another account");
                 });
     }
 

@@ -54,10 +54,10 @@ public class UserAccount extends BaseEntity{
     @Column(name = "avatar_path")
     private String avatarPath;
 
-    @Column(name = "face_template_path", length = 255)
+    @Column(name = "face_template_path", length = 512)
     private String faceTemplatePath;
 
-    @Column(name = "face_template_hash", length = 128)
+    @Column(name = "face_template_hash", length = 1024)
     private String faceTemplateHash;
 
     @Column(name = "face_enrolled_at")

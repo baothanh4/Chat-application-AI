@@ -19,6 +19,7 @@ import org.example.chatapplication.Model.Entity.ConversationMember;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Model.Enum.ConversationRole;
 import org.example.chatapplication.Model.Enum.ConversationType;
+import org.example.chatapplication.Exception.*;
 import org.example.chatapplication.Repository.ChatMessageRepository;
 import org.example.chatapplication.Repository.ConversationMemberRepository;
 import org.example.chatapplication.Repository.ConversationRepository;
@@ -29,7 +30,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
@@ -45,7 +45,7 @@ public class ConversationService {
     @Transactional
     public ConversationResponse createPrivateConversation(CreatePrivateConversationRequest request) {
         if (request.getOwnerId().equals(request.getRecipientId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Private chat requires two different users");
+            throw new AppException(ErrorCode.INVALID_INPUT, "Private chat requires two different users");
         }
 
         Conversation conversation = resolveOrCreatePrivateConversation(request.getOwnerId(), request.getRecipientId());
@@ -55,7 +55,7 @@ public class ConversationService {
     @Transactional
     public Conversation resolveOrCreatePrivateConversation(UUID ownerId, UUID recipientId) {
         if (ownerId.equals(recipientId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Private chat requires two different users");
+            throw new AppException(ErrorCode.INVALID_INPUT, "Private chat requires two different users");
         }
 
         UserAccount owner = userAccountService.requireUser(ownerId);
@@ -84,7 +84,7 @@ public class ConversationService {
         memberIds.add(request.getOwnerId());
 
         if (memberIds.size() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Group chat requires at least two members");
+            throw new AppException(ErrorCode.INVALID_INPUT, "Group chat requires at least two members");
         }
 
         Conversation conversation = new Conversation();
@@ -118,7 +118,7 @@ public class ConversationService {
     @Transactional(readOnly = true)
     public Conversation requireConversation(UUID conversationId) {
         return conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found: " + conversationId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -135,13 +135,13 @@ public class ConversationService {
 
         boolean touchesGroupIdentity = request.getName() != null || request.getDescription() != null || request.getAvatarPath() != null;
         if (touchesGroupIdentity && conversation.getType() == ConversationType.GROUP && actor.getRole() != ConversationRole.OWNER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the group owner can update group identity");
+            throw new UnauthorizedException(ErrorCode.FORBIDDEN);
         }
 
         if (request.getName() != null) {
             String name = request.getName().trim();
             if (name.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conversation name must not be blank");
+                throw new AppException(ErrorCode.INVALID_INPUT, "Conversation name must not be blank");
             }
             conversation.setName(name);
         }
@@ -176,7 +176,7 @@ public class ConversationService {
         boolean editingSelf = actor.getUser().getId().equals(targetUserId);
         boolean ownerEditingOthers = actor.getRole() == ConversationRole.OWNER;
         if (!editingSelf && !ownerEditingOthers) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only owner can edit other members' nicknames");
+            throw new UnauthorizedException(ErrorCode.FORBIDDEN);
         }
 
         target.setNickname(trimToNull(request.getNickname()));
@@ -333,19 +333,19 @@ public class ConversationService {
 
     private void requireMemberAccess(UUID conversationId, UUID userId) {
         if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
+            throw new AppException(ErrorCode.INVALID_INPUT, "userId is required");
         }
         if (!isMember(conversationId, userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of this conversation");
+            throw new UnauthorizedException(ErrorCode.NOT_A_MEMBER);
         }
     }
 
     private ConversationMember requireMember(UUID conversationId, UUID userId) {
         if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
+            throw new AppException(ErrorCode.INVALID_INPUT, "userId is required");
         }
         return conversationMemberRepository.findByConversationIdAndUserId(conversationId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of this conversation"));
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.NOT_A_MEMBER));
     }
 
     private ConversationAiConfigResponse toAiConfigResponse(Conversation conversation, UUID userId) {

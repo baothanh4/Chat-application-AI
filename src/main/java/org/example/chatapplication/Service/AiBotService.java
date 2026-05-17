@@ -39,9 +39,6 @@ public class AiBotService {
     @Value("${chatbot.bot-username:ai-assistant}")
     private String botUsername;
 
-    @Value("${chatbot.local.enabled:true}")
-    private boolean localAiEnabled;
-
     @Value("${chatbot.local.default-temperature:0.7}")
     private double defaultTemperature;
 
@@ -117,7 +114,7 @@ public class AiBotService {
         if (matchesAny(normalized, "help", "giup", "giúp", "huong dan", "hướng dẫn", "lenh", "lệnh", "commands")) {
             return helpMessage();
         }
-        if (matchesAny(normalized, "tom tat", "tóm tắt", "summary", "tong hop", "tổng hợp", "tong ket", "tổng kết", "phan tich", "phân tích")) {
+        if (matchesAny(normalized, "tom tat", "tóm tắt", "summary", "tong hop", "tổng hợp", "tong ket", "tổng kết", "phan tich", "phân tích", "tom luoc", "tóm lược")) {
             return buildSummaryReply(conversationId);
         }
         if (matchesAny(normalized, "task", "viec can", "việc cần", "cong viec", "công việc", "deadline", "can lam", "cần làm", "phai lam", "phải làm", "giao viec", "giao việc", "lam xong", "làm xong")) {
@@ -131,10 +128,7 @@ public class AiBotService {
             log.debug("Conversation {} unavailable for AI context: {}", conversationId, ex.getMessage());
         }
 
-        if (!localAiEnabled || (conversation != null && Boolean.FALSE.equals(conversation.getAiUseOfflineModel()))) {
-            return ruleBasedReply(userMessage, conversationId);
-        }
-
+        // Always attempt AI inference with OpenRouter
         String prompt = buildModelPrompt(userMessage, conversationId, conversation, globalPolicy);
         Double temperature = globalPolicy.getTemperature() != null
                 ? globalPolicy.getTemperature()
@@ -159,6 +153,17 @@ public class AiBotService {
         prompt.append("Ban la AI assistant trong ung dung chat noi bo.\n");
         prompt.append("Tra loi bang tieng Viet, tu nhien, ngan gon, than thien va huu ich.\n");
         prompt.append("Neu cau hoi can liet ke, su dung bullet ro rang.\n");
+        prompt.append("Doi voi du lieu so sanh hoac thong ke, hay su dung Markdown Table (| col | col |) de hien thi truc quan.\n");
+        prompt.append("Dac biet, ban CO THE tao bieu do hinh anh (Area graph/Bar chart) bang cach su dung cu phap:\n");
+        prompt.append("[CHART]\n");
+        prompt.append("{\n");
+        prompt.append("  \"type\": \"bar\" hoặc \"area\",\n");
+        prompt.append("  \"title\": \"Tên biểu đồ\",\n");
+        prompt.append("  \"data\": [\n");
+        prompt.append("    { \"name\": \"Năm/Tháng\", \"Value1\": 10, \"Value2\": 20 }\n");
+        prompt.append("  ]\n");
+        prompt.append("}\n");
+        prompt.append("[/CHART]\n");
 
         if (globalPolicy.getSystemPrompt() != null) {
             prompt.append("\n[Chinh sach he thong toan cuc]\n")
@@ -248,7 +253,7 @@ public class AiBotService {
         if (matchesAny(normalized, "help", "giup", "giúp", "huong dan", "hướng dẫn", "lenh", "lệnh", "commands")) {
             return helpMessage();
         }
-        if (matchesAny(normalized, "tom tat", "tóm tắt", "summary", "tong hop", "tổng hợp", "tong ket", "tổng kết", "phan tich", "phân tích")) {
+        if (matchesAny(normalized, "tom tat", "tóm tắt", "summary", "tong hop", "tổng hợp", "tong ket", "tổng kết", "phan tich", "phân tích", "tom luoc", "tóm lược")) {
             return buildSummaryReply(conversationId);
         }
         if (matchesAny(normalized, "task", "viec can", "việc cần", "cong viec", "công việc", "deadline", "can lam", "cần làm", "phai lam", "phải làm", "giao viec", "giao việc", "lam xong", "làm xong")) {

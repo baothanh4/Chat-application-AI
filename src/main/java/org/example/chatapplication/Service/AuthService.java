@@ -10,12 +10,10 @@ import org.example.chatapplication.DTO.Response.UserResponse;
 import org.example.chatapplication.Model.Entity.UserAccount;
 import org.example.chatapplication.Model.Enum.UserRole;
 import org.example.chatapplication.Repository.UserAccountRepository;
-import org.example.chatapplication.Exception.FaceLoginAmbiguousException;
-import org.example.chatapplication.Exception.FaceEnrollmentConflictException;
+import org.example.chatapplication.Exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
@@ -59,10 +57,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(AuthLoginRequest request) {
         UserAccount user = userAccountRepository.findByUsernameIgnoreCase(request.getUsername().trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         if (user.getPasswordHash() == null || !passwordHasher.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         assertAccountNotLocked(user);
@@ -96,7 +94,7 @@ public class AuthService {
         FaceMatch bestMatch = rankedMatches.stream()
                 .filter(match -> match.distance() <= FACE_MATCH_THRESHOLD)
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Face scan does not match any registered user"));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS, "Face scan does not match any registered user"));
 
         int secondBestDistance = rankedMatches.stream()
                 .filter(match -> match.distance() <= FACE_MATCH_THRESHOLD)
@@ -132,7 +130,7 @@ public class AuthService {
     @Transactional
     public AuthResponse confirmFaceLogin(MultipartFile faceImage, UUID selectedUserId) {
         if (selectedUserId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected user is required");
+            throw new AppException(ErrorCode.INVALID_INPUT, "Selected user is required");
         }
 
         String scannedSignature = faceVerificationService.generateSignature(faceImage);
@@ -145,7 +143,7 @@ public class AuthService {
         }
 
         if (distance > FACE_MATCH_THRESHOLD) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Selected account does not match the scanned face");
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Selected account does not match the scanned face");
         }
 
         assertAccountNotLocked(selectedUser);
@@ -166,7 +164,7 @@ public class AuthService {
     private UserAccount createUser(AuthRegisterRequest request) {
         String username = request.getUsername().trim();
         if (userAccountRepository.findByUsernameIgnoreCase(username).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
+            throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
         UserAccount user = new UserAccount();
@@ -189,7 +187,7 @@ public class AuthService {
 
     private void assertAccountNotLocked(UserAccount user) {
         if (user != null && user.isAccountLocked()) {
-            throw new ResponseStatusException(HttpStatus.LOCKED, "Account is locked");
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
         }
     }
 

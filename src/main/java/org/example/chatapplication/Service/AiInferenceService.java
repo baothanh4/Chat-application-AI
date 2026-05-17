@@ -18,7 +18,6 @@ import java.util.Optional;
 public class AiInferenceService {
 
     private final ChatModel chatModel;
-    private final OfflineLlmService offlineLlmService;
 
     @Value("${spring.ai.openai.api-key:}")
     private String openRouterApiKey;
@@ -27,26 +26,26 @@ public class AiInferenceService {
         // Prefer OpenRouter if API key is present
         if (openRouterApiKey != null && !openRouterApiKey.isBlank()) {
             try {
-                log.info("Generating response using OpenRouter...");
-                ChatResponse response = chatModel.call(new Prompt(prompt));
+                log.info("Generating response using OpenRouter (model: ring-2.6-1t)...");
+                org.springframework.ai.chat.prompt.ChatOptions options = org.springframework.ai.openai.OpenAiChatOptions.builder()
+                        .temperature(temperature != null ? temperature : 0.7)
+                        .maxTokens(maxTokens != null ? maxTokens : 1024)
+                        .build();
+                
+                ChatResponse response = chatModel.call(new Prompt(prompt, options));
                 String content = response.getResult().getOutput().getText();
                 if (content != null && !content.isBlank()) {
                     return Optional.of(content.trim());
                 }
             } catch (Exception ex) {
-                log.error("OpenRouter generation failed: {}", ex.getMessage());
+                log.error("OpenRouter generation failed: {}.", ex.getMessage());
             }
         }
-
-        // Fallback to Ollama
-        log.info("Falling back to Ollama for generation...");
-        return offlineLlmService.generateWithOllama(prompt, temperature, maxTokens);
+        
+        return Optional.empty();
     }
 
     public String getActiveModelName() {
-        if (openRouterApiKey != null && !openRouterApiKey.isBlank()) {
-            return "OpenRouter (ring-2.6-1t)";
-        }
-        return "Ollama (" + offlineLlmService.getOllamaModel() + ")";
+        return "OpenRouter (ring-2.6-1t)";
     }
 }

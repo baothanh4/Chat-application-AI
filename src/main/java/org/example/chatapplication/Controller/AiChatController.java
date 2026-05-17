@@ -42,12 +42,14 @@ public class AiChatController {
 
         Optional<String> reply = aiInferenceService.generate(enrichedPrompt, temperature, maxTokens);
         return reply.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.internalServerError().body("Không thể kết nối với AI Assistant. Vui lòng kiểm tra lại cấu hình OpenRouter và đảm bảo Backend đang chạy."));
+                .orElse(ResponseEntity.internalServerError().body("❌ Lỗi: AI Assistant không thể phản hồi lúc này. " +
+                        "Nguyên nhân có thể do OpenRouter bị lỗi hoặc Ollama (Local AI) chưa được khởi động. " +
+                        "Vui lòng kiểm tra lại kết nối và cấu hình hệ thống."));
     }
 
     private String enrichPromptWithOtherChats(String prompt) {
         String lowerPrompt = prompt.toLowerCase();
-        if (!lowerPrompt.contains("tổng hợp") && !lowerPrompt.contains("summary")) {
+        if (!lowerPrompt.contains("tổng hợp") && !lowerPrompt.contains("summary") && !lowerPrompt.contains("tóm tắt")) {
             return prompt;
         }
 
